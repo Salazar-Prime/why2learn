@@ -1067,10 +1067,11 @@ class ComputationalGraphPrimer(object):
             data_tuple_avg = list(map(operator.truediv, data_tuple_avg, 
                                      [float(len(class_labels))] * len(class_labels) ))
             self.backprop_and_update_params_one_neuron_model(y_error_avg, data_tuple_avg, deriv_sigmoid_avg)
+        plt.figure()     
+        plt.plot(loss_running_record) 
+        plt.show()  
         return loss_running_record
-#         plt.figure()     
-#         plt.plot(loss_running_record) 
-#         plt.show()   
+
 
     def forward_prop_one_neuron_model(self, data_tuples_in_batch):
         """
@@ -1184,6 +1185,7 @@ class ComputationalGraphPrimer(object):
         plt.figure()     
         plt.plot(loss_running_record) 
         plt.show()   
+        return loss_running_record
 
 
     def forward_prop_multi_neuron_model(self, data_tuples_in_batch):
