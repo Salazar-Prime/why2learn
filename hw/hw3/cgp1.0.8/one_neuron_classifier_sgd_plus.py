@@ -1,3 +1,9 @@
+"""
+Homework 3: Understanding CGP code and implementing SGD + Momentum 
+Author: Varun Aggarwal
+Last Modified: 27 Jan 2022
+"""
+
 #!/usr/bin/env python
 
 ##  one_neuron_classifier.py
@@ -12,13 +18,33 @@ other letters of the alphabet are the learnable parameters.
 import random
 import numpy
 
+import sys
+sys.path.append("..")
+
 seed = 0           
 random.seed(seed)
 numpy.random.seed(seed)
 
 from ComputationalGraphPrimer import *
 
+class cgpSuperCharged(ComputationalGraphPrimer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
+
 cgp = ComputationalGraphPrimer(
+
+               one_neuron_model = True,
+               expressions = ['xw=ab*xa+bc*xb+cd*xc+ac*xd'],
+               output_vars = ['xw'],
+               dataset_size = 5000,
+               learning_rate = 1e-3,
+#               learning_rate = 5 * 1e-2,
+               training_iterations = 40000,
+               batch_size = 8,
+               display_loss_how_often = 100,
+               debug = True,
+      )
+cgp = cgpSuperCharged(
                one_neuron_model = True,
                expressions = ['xw=ab*xa+bc*xb+cd*xc+ac*xd'],
                output_vars = ['xw'],
@@ -32,12 +58,12 @@ cgp = ComputationalGraphPrimer(
       )
 
 
-cgp.parse_expressions()
+# cgp.parse_expressions()
 
-#cgp.display_network1()
-cgp.display_network2()
+# cgp.display_network1()
+# cgp.display_network2()
 
-cgp.gen_training_data()
+# cgp.gen_training_data()
 
-cgp.run_training_loop_one_neuron_model()
+# cgp.run_training_loop_one_neuron_model()
 

@@ -67,7 +67,7 @@ cgp.parse_multi_layer_expressions()
 #cgp.display_network1()
 cgp.display_network2()
 
-cgp.gen_training_data()
+training_data = cgp.gen_training_data()
 
-cgp.run_training_loop_multi_neuron_model()
+cgp.run_training_loop_multi_neuron_model( training_data )
 

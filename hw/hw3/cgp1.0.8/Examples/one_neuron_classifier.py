@@ -37,7 +37,7 @@ cgp.parse_expressions()
 #cgp.display_network1()
 cgp.display_network2()
 
-cgp.gen_training_data()
+training_data = cgp.gen_training_data()
 
-cgp.run_training_loop_one_neuron_model()
+cgp.run_training_loop_one_neuron_model( training_data )
 

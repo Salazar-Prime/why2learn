@@ -1,8 +1,733 @@
-__version__   = '1.0.6'
+__version__   = '1.0.8'
 __author__    = "Avinash Kak (kak@purdue.edu)"
-__date__      = '2021-February-22'   
-__url__       = 'https://engineering.purdue.edu/kak/distCGP/ComputationalGraphPrimer-1.0.6.html'
-__copyright__ = "(C) 2021 Avinash Kak. Python Software Foundation."
+__date__      = '2022-February-2'   
+__url__       = 'https://engineering.purdue.edu/kak/distCGP/ComputationalGraphPrimer-1.0.8.html'
+__copyright__ = "(C) 2022 Avinash Kak. Python Software Foundation."
+
+
+__doc__ = '''
+
+ComputationalGraphPrimer.py
+
+Version: ''' + __version__ + '''
+   
+Author: Avinash Kak (kak@purdue.edu)
+
+Date: ''' + __date__ + '''
+
+
+@title
+CHANGE LOG:
+
+  Version 1.0.8:
+
+    To make the code in the Example scripts easier to understand, the random
+    training data generator now returns the data that you can subsequently
+    supply to the training function.  (See the scripts in the Examples
+    directory for what I mean.)  I have also provided additional comments in
+    the main class file to help understand the code better.
+
+  Version 1.0.7:
+
+    I have fixed some documentation errors in this version and also cleaned up
+    the code by deleting functions not used in the demos.  The basic codebase
+    remains the same as in 1.0.6.
+
+  Version 1.0.6:
+
+    This version includes a demonstration of how to extend PyTorch's Autograd
+    class if you wish to customize how the learnable parameters are updated
+    during backprop on the basis of the data conditions discovered during the
+    forward propagation.  Previously this material was in the DLStudio module.
+
+  Version 1.0.5:
+
+    I have been experimenting with different ideas for increasing the tutorial
+    appeal of this module.  (That is the reason for the jump in the version
+    number from 1.0.2 to the current 1.0.5.)  The previous public version
+    provided a simple demonstration of how one could forward propagate data
+    through a DAG (Directed Acyclic Graph) while at the same compute the
+    partial derivatives that would be needed subsequently during the
+    backpropagation step for updating the values of the learnable parameters.
+    In 1.0.2, my goal was just to illustrate what was meant by a DAG and how
+    to use such a representation for forward data flow and backward parameter
+    update.  Since I had not incorporated any nonlinearities in such networks,
+    there was obviously no real learning taking place.  That fact was made
+    evident by a plot of training loss versus iterations.
+
+    To remedy this shortcoming of the previous public-release version, the
+    current version introduces two special cases of networks --- a one-neuron
+    network and a multi-neuron network --- for experimenting with forward
+    propagation of data while calculating the partial derivatives needed
+    later, followed by backpropagation of the prediction errors for updating
+    the values of the learnable parameters. In both cases, I have used the
+    Sigmoid activation function at the nodes. The partial derivatives that are
+    calculated in the forward direction are based on analytical formulas at
+    both the pre-activation point for data aggregation and the post-activation
+    point.  The forward and backward calculations incorporate smoothing of the
+    prediction errors and the derivatives over a batch as required by
+    stochastic gradient descent.
+
+  Version 1.0.2:
+
+    This version reflects the change in the name of the module that was
+    initially released under the name CompGraphPrimer with version 1.0.1
+
+
+@title
+INTRODUCTION:
+
+    This module was created with a modest goal in mind: its purpose being
+    merely to serve as a prelude to discussing automatic calculation of the
+    gradients as the input training data forward propagates through a network
+    of nodes that form a directed acyclic graph (DAG).
+
+    Most students taking classes on deep learning focus on just using the
+    tools provided by platforms such as PyTorch without any understanding of
+    how the tools really work.  Consider, for example, Autograd --- a module
+    that is at the heart of PyTorch --- for automatic calculation of the
+    Jacobian of the output of a layer with respect to all the learnable
+    parameters in the layer.  With no effort on the part of the programmer,
+    and through the functionality built into the "torch.Tensor" class, the
+    Autograd module keeps track of a tensor through all calculations involving
+    the tensor and computes the partial derivatives of the output of the layer
+    with respect to the parameters stored in the tensor.  These derivatives
+    are subsequently used to update the values of the learnable parameters
+    during the backpropagation step.
+
+    Now imagine a beginning student trying to make sense of the following
+    excerpts from the official PyTorch documentation related to Autograd:
+
+       "Every operation performed on Tensors creates a new function object,
+        that performs the computation, and records that it happened. The
+        history is retained in the form of a DAG of functions, with edges
+        denoting data dependencies (input <- output). Then, when backward is
+        called, the graph is processed in the topological ordering, by calling
+        backward() methods of each Function object, and passing returned
+        gradients on to next Functions."
+
+        and
+
+       "Check gradients computed via small finite differences against
+        analytical gradients w.r.t. tensors in inputs that are of floating
+        point type and with requires_grad=True."
+
+    There is a lot going on here: Why do we need to record the history of the
+    operations carried out on a tensor?  What is a DAG?  What are the returned
+    gradients?  Gradients of what?  What are the small finite differences?
+    Analytical gradients of what? etc. etc.
+
+    This module has three goals:
+
+    1)    To introduce you to forward and backward dataflows in a Directed
+          Acyclic Graph (DAG).
+
+    2)    To extend the material developed for the first goal with simple
+          examples of neural networks for demonstrating the forward and
+          backward dataflows for the purpose of updating the learnable
+          parameters.  This part of the module also includes a comparison of
+          the performance of such networks with those constructed using
+          torch.nn components.
+
+    3)    To explain how the behavior of PyTorch's Autograd class can be
+          customized to your specific data needs by extending that class.
+
+
+    GOAL 1:           
+
+    The first goal of this Primer is to introduce you to forward and backward
+    dataflows in a general DAG. The acronym DAG stands for Directed Acyclic
+    Graph. Just for the educational value of playing with dataflows in DAGs,
+    this module allows you to create a DAG of variables with a statement like
+
+               expressions = ['xx=xa^2',
+                              'xy=ab*xx+ac*xa',
+                              'xz=bc*xx+xy',
+                              'xw=cd*xx+xz^3']
+
+    where we assume that a symbolic name that beings with the letter 'x' is a
+    variable, all other symbolic names being learnable parameters, and where
+    we use '^' for exponentiation. The four expressions shown above contain
+    five variables --- 'xx', 'xa', 'xy', 'xz', and 'xw' --- and four learnable
+    parameters: 'ab', 'ac', 'bc', and 'cd'.  The DAG that is generated by
+    these expressions looks like:
+
+                    
+             ________________________________ 
+            /                                 \
+           /                                   \
+          /             xx=xa**2                v                                               
+       xa --------------> xx -----------------> xy   xy = ab*xx + ac*xa
+                          | \                   |                                   
+                          |  \                  |                                   
+                          |   \                 |                                   
+                          |    \                |                                   
+                          |     \_____________  |                                   
+                          |                   | |                                   
+                          |                   V V                                   
+                           \                   xz                                   
+                            \                 /    xz = bc*xx + xy              
+                             \               /                                      
+                              -----> xw <----                                       
+                                                                                    
+                              xw  = cd*xx + xz                                      
+
+
+    By the way, you can call 'display_network2()' on an instance of
+    ComputationalGraphPrimer to make a much better looking plot of the
+    network graph for any DAG created by the sort of expressions shown
+    above.
+
+    In the DAG shown above, the variable 'xa' is an independent variable
+    since it has no incoming arcs, and 'xw' is an output variable since it
+    has no outgoing arcs. A DAG of the sort shown above is represented in
+    ComputationalGraphPrimer by two dictionaries: 'depends_on' and 'leads_to'.
+    Here is what the 'depends_on' dictionary would look like for the DAG
+    shown above:
+                                                                                   
+        depends_on['xx']  =  ['xa']
+        depends_on['xy']  =  ['xa', 'xx']
+        depends_on['xz']  =  ['xx', 'xy']
+        depends_on['xw']  =  ['xx', 'xz']
+
+    Something like "depends_on['xx'] = ['xa']" is best read as "the vertex
+    'xx' depends on the vertex 'xa'."  Similarly, the "depends_on['xz'] =
+    ['xx', 'xy']" is best read aloud as "the vertex 'xz' depends on the
+    vertices 'xx' and 'xy'." And so on.
+
+    Whereas the 'depends_on' dictionary is a complete description of a DAG,
+    for programming convenience, ComputationalGraphPrimer also maintains
+    another representation for the same graph, as provide by the 'leads_to'
+    dictionary.  This dictionary for the same graph as shown above would
+    be:
+
+        leads_to['xa']    =  ['xx', 'xy']
+        leads_to['xx']    =  ['xy', 'xz', 'xw']
+        leads_to['xy']    =  ['xz']     
+        leads_to['xz']    =  ['xw']
+
+     The "leads_to[xa] = [xx]" is best read as "the outgoing edge at the
+     node 'xa' leads to the node 'xx'."  Along the same lines, the
+     "leads_to['xx'] = ['xy', 'xz', 'xw']" is best read as "the outgoing
+     edges at the vertex 'xx' lead to the vertices 'xy', 'xz', and 'xw'.
+
+     Given a computational graph like the one shown above, we are faced
+     with the following questions: (1) How to propagate the information
+     from the independent nodes --- that we can refer to as the input nodes
+     --- to the output nodes, these being the nodes with only incoming
+     edges?  (2) As the information flows in the forward direction, meaning
+     from the input nodes to the output nodes, is it possible to estimate
+     the partial derivatives that apply to each link in the graph?  And,
+     finally, (3) Given a scalar value at an output node (which could be
+     the loss estimated at that node), can the partial derivatives
+     estimated during the forward pass be used to backpropagate the loss?
+
+     Consider, for example, the directed link between the node 'xy' and
+     node 'xz'. As a variable, the value of 'xz' is calculated through the
+     formula "xz = bc*xx + xy". In the forward propagation of information,
+     we estimate the value of 'xz' from currently known values for the
+     learnable parameter 'bc' and the variables 'xx' and 'xy'.  In addition
+     to the value of the variable at the node 'xz', we are also interested
+     in the value of the partial derivative of 'xz' with respect to the
+     other variables that it depends on --- 'xx' and 'xy' --- and also with
+     respect to the parameter it depends on, 'bc'.  For the calculation of
+     the derivatives, we have a choice: We can either do a bit of computer
+     algebra and figure out that the partial of 'xz' with respect to 'xx'
+     is equal to the current value for 'bc'.  Or, we can use the small
+     finite difference method for doing the same, which means that (1) we
+     calculate the value of 'xz' for the current value of 'xx', on the one
+     hand, and, on the other, for 'xx' plus a delta; (2) take the
+     difference of the two; and (3) divide the difference by the delta.
+     ComputationalGraphPrimer module uses the finite differences method for
+     estimating the partial derivatives.
+
+     Since we have two different types of partial derivatives, partial of a
+     variable with respect to another variable, and the partial of a
+     variable with respect a learnable parameter, ComputationalGraphPrimer
+     uses two different dictionaries for storing this partials during each
+     forward pass.  Partials of variables with respect to other variables
+     as encountered during forward propagation are stored in the dictionary
+     "partial_var_to_var" and the partials of the variables with respect to
+     the learnable parameters are stored in the dictionary
+     partial_var_to_param.  At the end of each forward pass, the relevant
+     partials extracted from these dictionaries are used to estimate the
+     gradients of the loss with respect to the learnable parameters, as        
+     illustrated in the implementation of the method train_on_all_data().      
+
+     While the exercise mentioned above is good for appreciating data flows in
+     a general DAG, you've got to realize that, with today's algorithms, it
+     would be impossible to carry out any learning in a general DAG.  A
+     general DAG with millions of learnable parameters would not lend itself
+     to a fast calculation of the partial derivatives that are needed during
+     the backpropagation step.  Since the exercise described above is just to
+     get you thinking about data flows in DAGs and nothing else, I have not
+     bothered to include any activation functions in the DAG demonstration
+     code in this Primer.
+
+     GOAL 2:
+
+     That brings us to the second major goal of this Primer module:
+
+         To provide examples of simple neural structures in which the
+         required partial derivatives are calculated during forward data
+         propagation and subsequently used for parameter update during the
+         backpropagation of loss.
+
+     In order to become familiar with how this is done in the module, your
+     best place to start would be the following two scripts in the Examples
+     directory of the distribution:
+
+         one_neuron_classifier.py
+
+         multi_neuron_classifier.py  
+
+     The first script, "one_neuron_classifier.py", invokes the following
+     function from the module:
+
+         run_training_loop_one_neuron_model()
+
+     This function, in turn, calls the following functions, the first for
+     forward propagation of the data, and the second for the
+     backpropagation of loss and updating of the parameters values:
+
+         forward_prop_one_neuron_model()
+         backprop_and_update_params_one_neuron_model()
+
+     The data that is forward propagated to the output node is subject to
+     Sigmoid activation.  The derivatives that are calculated during
+     forward propagation of the data include the partial 'output vs. input'
+     derivatives for the Sigmoid nonlinearity. The backpropagation step
+     implemented in the second of the two functions listed above includes
+     averaging the partial derivatives and the prediction errors over a
+     batch of training samples, as required by SGD.
+     
+     The second demo script in the Examples directory,
+     "multi_neuron_classifier.py" creates a neural network with a hidden
+     layer and an output layer.  Each node in the hidden layer and the node
+     in the output layer are all subject to Sigmoid activation.
+     This script invokes the following function of the module:
+
+         run_training_loop_multi_neuron_model()
+
+     And this function, in turn, calls upon the following two functions,
+     the first for forward propagating the data and the second for the
+     backpropagation of loss and updating of the parameters:
+
+        forward_prop_multi_neuron_model()
+        backprop_and_update_params_multi_neuron_model()
+
+     In contrast with the one-neuron demo, in this case, the batch-based
+     data that is output by the forward function is sent directly to the
+     backprop function.  It then becomes the job of the backprop function
+     to do the averaging needed for SGD.
+
+     In the Examples directory, you will also find the following script:
+
+        verify_with_torchnn.py
+
+     The idea for this script is to serve as a check on the performance of
+     the main demo scripts "one_neuron_classifier.py" and
+     "multi_neuron_classifier.py".  Note that you cannot expect the
+     performance of my one-neuron and multi-neuron scripts to match what
+     you would get from similar networks constructed with components drawn
+     from "torch.nn".  One primary reason for that is that "torch.nn" based
+     code uses the state-of-the-art optimization of the steps in the
+     parameter hyperplane, with is not the case with my demo scripts.
+     Nonetheless, a comparison with the "torch.nn" is important for general
+     trend of how the training loss varies with the iterations.  That is,
+     if the "torch.nn" based script showed decreasing loss (indicated that
+     learning was taking place) while that was not the case with my
+     one-neuron and multi-neuron scripts, that would indicate that perhaps
+     I had made an error in either the computation of the partial derivatives
+     during the forward propagation of the data, or I had used the
+     derivatives for updating the parameters.
+
+     GOAL 3:
+
+     The goal here is to show how to extend PyTorch's Autograd class if you
+     want to endow it with additional functionality. Let's say that you
+     wish for some data condition to be remembered during the forward
+     propagation of the data through a network and then use that condition
+     to alter in some manner how the parameters would be updated during
+     backpropagation of the prediction errors.  This can be accomplished by
+     subclassing from Autograd and incorporating the desired behavior in
+     the subclass.  As to how how you can extend Autograd is demonstrated
+     by the inner class AutogradCustomization in this module. Your starting
+     point for understanding what this class does would be the script
+
+         extending_autograd.py
+
+     in the Examples directory of the distribution. 
+
+
+@title
+INSTALLATION:
+
+    The ComputationalGraphPrimer class was packaged using setuptools.  For
+    installation, execute the following command in the source directory
+    (this is the directory that contains the setup.py file after you have
+    downloaded and uncompressed the package):
+ 
+            sudo python3 setup.py install
+
+    On Linux distributions, this will install the module file at a location
+    that looks like
+
+             /usr/local/lib/python3.8/dist-packages/
+
+    If you do not have root access, you have the option of working directly
+    off the directory in which you downloaded the software by simply
+    placing the following statements at the top of your scripts that use
+    the ComputationalGraphPrimer class:
+
+            import sys
+            sys.path.append( "pathname_to_ComputationalGraphPrimer_directory" )
+
+    To uninstall the module, simply delete the source directory, locate
+    where the ComputationalGraphPrimer module was installed with "locate
+    ComputationalGraphPrimer" and delete those files.  As mentioned above,
+    the full pathname to the installed version is likely to look like
+    "/usr/local/lib/python3.8/dist-packages/".
+
+    If you want to carry out a non-standard install of the
+    ComputationalGraphPrimer module, look up the on-line information on
+    Disutils by pointing your browser to
+
+              http://docs.python.org/dist/dist.html
+
+@title
+USAGE:
+
+    Construct an instance of the ComputationalGraphPrimer class as follows:
+
+        from ComputationalGraphPrimer import *
+
+        cgp = ComputationalGraphPrimer(
+                       expressions = ['xx=xa^2',
+                                      'xy=ab*xx+ac*xa',
+                                      'xz=bc*xx+xy',
+                                      'xw=cd*xx+xz^3'],
+                       output_vars = ['xw'],
+                       dataset_size = 10000,
+                       learning_rate = 1e-6,
+                       grad_delta    = 1e-4,
+                       display_loss_how_often =	1000,
+              )
+        
+        cgp.parse_expressions()
+        cgp.display_network2()                                                                    
+        cgp.gen_gt_dataset(vals_for_learnable_params = {'ab':1.0, 'bc':2.0, 'cd':3.0, 'ac':4.0})
+        cgp.train_on_all_data()
+        cgp.plot_loss()
+
+
+@title
+CONSTRUCTOR PARAMETERS: 
+
+    batch_size: Introduced in Version 1.0.5 for demonstrating forward
+                    propagation of the input data while calculating the
+                    partial derivatives needed during backpropagation of
+                    loss. For SGD, updating the parameters involves
+                    smoothing the derivatives over the training samples in
+                    a batch. Hence the need for batch_size as a constructor
+                    parameter.
+
+    dataset_size: Although the networks created by an arbitrary set of
+                    expressions are not likely to allow for any true
+                    learning of the parameters, nonetheless the
+                    ComputationalGraphPrimer allows for the computation of
+                    the loss at the output nodes and backpropagation of the
+                    loss to the other nodes.  To demonstrate this, we need
+                    a ground-truth set of input/output values for given
+                    value for the learnable parameters.  The constructor
+                    parameter 'dataset_size' refers to how may of these
+                    'input/output' pairs would be generated for such
+                    experiments.
+
+                    For the one-neuron and multi-neuron demos introduced in
+                    Version 1.0.5, the constructor parameter dataset_size
+                    refers to many tuples of randomly generated data should
+                    be made available for learning. The size of each data
+                    tuple is deduced from the the first expression in the
+                    list made available to module through the parameter
+                    'expressions' described below.
+
+    display_loss_how_often: This controls how often you will see the result
+                    of the calculations being carried out in the
+                    computational graph.  Let's say you are experimenting
+                    with 10,000 input/output samples for propagation in the
+                    network, if you set this constructor option to 1000,
+                    you will see the partial derivatives and the values for
+                    the learnable parameters every 1000 passes through the
+                    graph.
+
+    expressions: These expressions define the computational graph.  The
+                    expressions are based on the following assumptions: (1)
+                    any variable name must start with the letter 'x'; (2) a
+                    symbolic name that does not start with 'x' is a
+                    learnable parameter; (3) exponentiation operator is
+                    '^'; (4) the symbols '*', '+', and '-' carry their
+                    usual arithmetic meanings.
+
+    grad_delta: This constructor option sets the value of the delta to be
+                    used for estimating the partial derivatives with the
+                    finite difference method.
+
+    layers_config: Introduced in Version 1.0.5 for the multi-neuron
+                    demo. Its value is a list of nodes in each layer of the
+                    network. Note that I consider the input to the neural
+                    network as a layer unto itself.  Therefore, if the
+                    value of the parameter num_layers is 3, the list you
+                    supply for layers_config must have three numbers in it.
+
+    learning_rate: Carries the usual meaning for updating the values of the
+                    learnable parameters based on the gradients of the 
+                    output of a layer with respect to those parameters.
+
+    num_layers: Introduced in Version 1.0.5 for the multi-neuron demo. It
+                    is merely a convenience parameter that indicated the
+                    number of layers in your multi-neuron network. For the
+                    purpose of counting layers, I consider the input as a
+                    layer unto itself.
+
+    one_neuron_model: Introduced in Version 1.0.5.  This boolean parameter
+                    is needed only when you are constructing a one-neuron
+                    demo. I needed this constructor parameter for some
+                    conditional evaluations in the "parse_expressions()"
+                    method of the module.  I use that expression parser for
+                    both the older demos and the new demo based on the
+                    one-neuron model.
+
+    output_vars: Although the parser has the ability to figure out which
+                    nodes in the computational graph represent the output
+                    variables --- these being nodes with no outgoing arcs
+                    --- you are allowed to designate the specific output
+                    variables you are interested in through this
+                    constructor parameter.
+
+    training_iterations: Carries the expected meaning.
+
+
+@title
+PUBLIC METHODS:
+
+    (1)  backprop_and_update_params_one_neuron_model():
+
+         Introduced in Version 1.0.5.  This method is called by
+         run_training_loop_one_neuron_model() for backpropagating the loss
+         and updating the values of the learnable parameters.
+
+    (2)  backprop_and_update_params_multi_neuron_model():
+
+         Introduced in Version 1.0.5.  This method is called by
+         run_training_loop_multi_neuron_model() for backpropagating the
+         loss and updating the values of the learnable parameters.
+
+    (3)  display_network2():
+
+         This method calls on the networkx module to construct a visual
+         display of the computational graph.
+
+
+    (4)  forward_propagate_one_input_sample_with_partial_deriv_calc():
+
+         This method is used for pushing the input data forward through a
+         general DAG and at the same computing the partial derivatives that
+         would be needed during backpropagation for updating the values of
+         the learnable parameters.
+
+    (5)  forward_prop_one_neuron_model():
+
+         Introduced in Version 1.0.5.  This function propagates the input
+         data through a one-neuron network.  The data aggregated at the
+         neuron is subject to a Sigmoid activation.  The function also
+         calculates the partial derivatives needed during backprop.
+
+    (6)  forward_prop_multi_neuron_model():
+
+         Introduced in Version 1.0.5. This function does the same thing as
+         the previous function, except that it is intended for a multi-layer
+         neural network. The pre-activation values at each neuron are
+         subject to the Sigmoid nonlinearity. At the same time, the partial
+         derivatives are calculated and stored away for use during backprop.
+
+    (7)  gen_gt_dataset()
+
+         This method generates the training data for a general graph of
+         nodes in a DAG. For random values at the input nodes, it
+         calculates the values at the output nodes assuming certain given
+         values for the learnable parameters in the network. If it were
+         possible to carry out learning in such a network, the goal would
+         to see if the value of those parameters would be learned
+         automatically as in a neural network.
+
+    (8)  gen_training_data():
+
+         Introduced in Version 1.0.5. This function generates training data
+         for the scripts "one_neuron_classifier.py",
+         "multi_neuron_classifier.py" and "verify_with_torchnn.py" scripts
+         in the Examples directory of the distribution.  The data
+         corresponds to two classes defined by two different multi-variate
+         distributions. The dimensionality of the data is determined
+         entirely the how many nodes are found by the expression parser in
+         the list of expressions that define the network.
+
+    (9)  parse_expressions()
+
+         This method parses the expressions provided and constructs a DAG
+         from them for the variables and the parameters in the expressions.
+         It is based on the convention that the names of all variables
+         begin with the character 'x', with all other symbolic names being
+         treated as learnable parameters.
+
+    (10) parse_multi_layer_expressions():
+
+         Introduced in Version 1.0.5. Whereas the previous method,
+         parse_expressions(), works well for creating a general DAG and for
+         the one-neuron model, it is not meant to capture the layer based
+         structure of a neural network.  Hence this method.
+
+    (11) run_training_loop_one_neuron_model():
+
+         Introduced in Version 1.0.5.  This is the main function in the
+         module for the demo based on the one-neuron model. The demo
+         consists of propagating the input values forward, aggregating them
+         at the neuron, and subjecting the result to Sigmoid activation.
+         All the partial derivatives needed for updating the link weights
+         are calculating the forward propagation.  This includes the
+         derivatives of the output vis-a-vis the input at the Sigmoid
+         activation.  Subsequently, during backpropagation of the loss, the
+         parameter values are updated using the derivatives stored away
+         during forward propagation.
+
+    (12) run_training_loop_multi_neuron_model()
+
+         Introduced in Version 1.0.5.  This is the main function for the
+         demo based on a multi-layer neural network.  As each batch of
+         training data is pushed through the network, the partial derivatives
+         of the output at each layer is computed with respect to the
+         parameters. This calculating includes computing the partial
+         derivatives at the output of the activation function with respect
+         to its input.  Subsequently, during backpropagation, first
+         batch-based smoothing is applied to the derivatives and the
+         prediction errors stored away during forward propagation in order
+         to comply with the needs of SGD and the values of the learnable
+         parameters updated.
+         
+    (13) run_training_with_torchnn():
+
+         Introduced in Version 1.0.5.  The purpose of this function is to
+         use comparable network components from the torch.nn module in
+         order to "authenticate" the performance of the handcrafted
+         one-neuron and the multi-neuron models in this module.  All that
+         is meant by "authentication" here is that if the torch.nn based
+         networks show the training loss decrease with iterations, you
+         would the one-neuron and the multi-neuron models to show similar
+         results.  This function contains the following inner classes:
+
+                  class OneNeuronNet( torch.nn.Module )
+
+                  class MultiNeuronNet( torch.nn.Module )
+
+         that define networks similar to the handcrafted one-neuron and
+         multi-neuron networks of this module.
+
+
+    (14) train_on_all_data()
+
+         The purpose of this function is to call forward propagation and
+         backpropagation functions of the module for the demo based on
+         arbitrary DAGs.
+
+
+    (15) plot_loss()
+
+         This is only used by the functions that DAG based demonstration code
+         in the module.  The training functions introduced in Version 1.0.5 have
+         embedded code for plotting the loss as a function of iterations.
+
+
+@title 
+THE Examples DIRECTORY:
+
+    The Examples directory of the distribution contains the following the
+    following scripts:
+
+    1.   graph_based_dataflow.py
+
+             This demonstrates forward propagation of input data and
+             backpropagation in a general DAG (Directed Acyclic Graph).
+             The forward propagation involves estimating the partial
+             derivatives that would subsequently be used for "updating" the
+             learnable parameters during backpropagation.  Since I have not
+             incorporated any activations in the DAG, you can really not
+             expect any real learning to take place in this demo.  The
+             purpose of this demo is just to illustrate what is meant by a
+             DAG and how information can flow forwards and backwards in
+             such a network.
+
+    2.   one_neuron_classifier.py
+
+             This script demonstrates the one-neuron model in the module.
+             The goal is to show forward propagation of data through the
+             neuron (which includes the Sigmoid activation), while
+             calculating the partial derivatives needed during the
+             backpropagation step for updating the parameters.
+
+    3.   multi_neuron_classifier.py  
+
+             This script generalizes what is demonstrated by the one-neuron
+             model to a multi-layer neural network.  This script
+             demonstrates saving the partial-derivative information
+             calculated during the forward propagation through a
+             multi-layer neural network and using that information for
+             backpropagating the loss and for updating the values of the
+             learnable parameters.
+
+    4.   verify_with_torchnn.py
+
+              The purpose of this script is just to verify that the results
+              obtained with the scripts "one_neuron_classifier.py" and
+              "multi_neuron_classifier.py" are along the expected lines.
+              That is, if similar networks constructed with the torch.nn
+              module show the training loss decreasing with iterations, you
+              would expect the similar learning behavior from the scripts
+              "one_neuron_classifier.py" and "multi_neuron_classifier.py".
+
+    5.  extending_autograd.py
+
+              This provides a demo example of the recommended approach for
+              giving additional functionality to Autograd.  See the
+              explanation in the doc section associated with the inner
+              class AutogradCustomization of this module for further info.
+
+
+@title
+BUGS:
+
+    Please notify the author if you encounter any bugs.  When sending
+    email, please place the string 'ComputationalGraphPrimer' in the
+    subject line to get past the author's spam filter.
+
+
+@title
+ABOUT THE AUTHOR:
+
+    The author, Avinash Kak, is a professor of Electrical and Computer
+    Engineering at Purdue University.  For all issues related to this
+    module, contact the author at kak@purdue.edu If you send email, please
+    place the string "ComputationalGraphPrimer" in your subject line to get
+    past the author's spam filter.
+
+@title
+COPYRIGHT:
+
+    Python Software Foundation License
+
+    Copyright 2022 Avinash Kak
+
+@endofdocs
+'''
 
 
 import sys,os,os.path
@@ -62,8 +787,6 @@ class ComputationalGraphPrimer(object):
             self.layers_config = layers_config
         if expressions:
             self.expressions = expressions
-#        else:
-#            sys.exit("you need to supply a list of expressions")
         if output_vars:
             self.output_vars = output_vars
         if dataset_size:
@@ -175,6 +898,7 @@ class ComputationalGraphPrimer(object):
         self.exp_objects = []
         self.layer_expressions = { i : [] for i in range(1,self.num_layers) }
         self.layer_exp_objects = { i : [] for i in range(1,self.num_layers) }
+        ## A deque is a double-ended queue in which elements can inserted and deleted at both ends.
         all_expressions = deque(self.expressions)
         for layer_index in range(self.num_layers - 1):
             for node_index in range(self.layers_config[layer_index+1]):   
@@ -272,12 +996,27 @@ class ComputationalGraphPrimer(object):
     ### Introduced in 1.0.5
     ######################################################################################################
     ######################################### one neuron model ###########################################
-    def run_training_loop_one_neuron_model(self):
-        training_data = self.training_data
+    def run_training_loop_one_neuron_model(self, training_data):
+        """
+        The training loop must first initialize the learnable parameters.  Remember, these are the 
+        symbolic names in your input expressions for the neural layer that do not begin with the 
+        letter 'x'.  In this case, we are initializing with random numbers from a uniform distribution 
+        over the interval (0,1).
+        """
         self.vals_for_learnable_params = {param: random.uniform(0,1) for param in self.learnable_params}
         self.bias = random.uniform(0,1)
 
         class DataLoader:
+            """
+            The data loader's job is to construct a batch of randomly chosen samples from the
+            training data.  But, obviously, it must first associate the class labels 0 and 1 with
+            the training data supplied to the constructor of the DataLoader.   NOTE:  The training
+            data is generated in the Examples script by calling 'cgp.gen_training_data()' in the
+            ****Utility Functions*** section of this file.  That function returns two normally
+            distributed set of number with different means and variances.  One is for key value '0'
+            and the other for the key value '1'.  The constructor of the DataLoader associated a'
+            class label with each sample separately.
+            """
             def __init__(self, training_data, batch_size):
                 self.training_data = training_data
                 self.batch_size = batch_size
@@ -304,7 +1043,7 @@ class ComputationalGraphPrimer(object):
                 batch = [batch_data, batch_labels]
                 return batch                
 
-        data_loader = DataLoader(self.training_data, batch_size=self.batch_size)
+        data_loader = DataLoader(training_data, batch_size=self.batch_size)
         loss_running_record = []
         i = 0
         avg_loss_over_literations = 0.0
@@ -328,26 +1067,30 @@ class ComputationalGraphPrimer(object):
             data_tuple_avg = list(map(operator.truediv, data_tuple_avg, 
                                      [float(len(class_labels))] * len(class_labels) ))
             self.backprop_and_update_params_one_neuron_model(y_error_avg, data_tuple_avg, deriv_sigmoid_avg)
-        plt.figure()     
-        plt.plot(loss_running_record) 
-        plt.show()   
+        return loss_running_record
+#         plt.figure()     
+#         plt.plot(loss_running_record) 
+#         plt.show()   
 
     def forward_prop_one_neuron_model(self, data_tuples_in_batch):
         """
         As the one-neuron model is characterized by a single expression, the main job of this function is
         to evaluate that expression for each data tuple in the incoming batch.  The resulting output is
         fed into the sigmoid activation function and the partial derivative of the sigmoid with respect
-        to its input calcualated.
+        to its input calculated.
+
+        See Slides 103 through 108 of Week 3 slides for the logic implemented  here.
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         """
         output_vals = []
         deriv_sigmoids = []
         for vals_for_input_vars in data_tuples_in_batch:
-            input_vars = self.independent_vars
+            input_vars = self.independent_vars                   ## this is just a list of vars for input nodes
             vals_for_input_vars_dict =  dict(zip(input_vars, list(vals_for_input_vars)))
             exp_obj = self.exp_objects[0]
             output_val = self.eval_expression(exp_obj.body , vals_for_input_vars_dict, self.vals_for_learnable_params)
             output_val = output_val + self.bias
-            ## apply sigmoid activation:
+            ## apply sigmoid activation (output confined to [0.0,1.0] interval)
             output_val = 1.0 / (1.0 + np.exp(-1.0 * output_val))
             ## calculate partial of the activation function as a function of its input
             deriv_sigmoid = output_val * (1.0 - output_val)
@@ -355,34 +1098,35 @@ class ComputationalGraphPrimer(object):
             deriv_sigmoids.append(deriv_sigmoid)
         return output_vals, deriv_sigmoids
 
+
     def backprop_and_update_params_one_neuron_model(self, y_error, vals_for_input_vars, deriv_sigmoid):
         """
         As should be evident from the syntax used in the following call to backprop function,
 
            self.backprop_and_update_params_one_neuron_model( y_error_avg, data_tuple_avg, deriv_sigmoid_avg)
                                                                      ^^^             ^^^                ^^^
-                                                               
         the values fed to the backprop function for its three arguments are averaged over the training 
         samples in the batch.  This in keeping with the spirit of SGD that calls for averaging the 
         information retained in the forward propagation over the samples in a batch.
+
+        See Slides 103 through 108 of Week 3 slides for the logic implemented  here.
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         """
         input_vars = self.independent_vars
         vals_for_input_vars_dict =  dict(zip(input_vars, list(vals_for_input_vars)))
         vals_for_learnable_params = self.vals_for_learnable_params
         for i,param in enumerate(self.vals_for_learnable_params):
-            step = self.learning_rate * y_error * vals_for_input_vars_dict[input_vars[i]] * deriv_sigmoid
+            ## calculate the next step in the parameter hyperplane
+            step = self.learning_rate * y_error * vals_for_input_vars_dict[input_vars[i]] * deriv_sigmoid    
             self.vals_for_learnable_params[param] += step
-        self.bias += self.learning_rate * y_error * deriv_sigmoid
+        self.bias += self.learning_rate * y_error * deriv_sigmoid    ## the step to take for the bias
     ######################################################################################################
 
 
     ### Introduced in 1.0.5
     ######################################################################################################
     ######################################## multi neuron model ##########################################
-    def run_training_loop_multi_neuron_model(self):
-        training_data = self.training_data
-        self.vals_for_learnable_params = {param: random.uniform(0,1) for param in self.learnable_params}
-        self.bias = [random.uniform(0,1) for _ in range(self.num_layers-1)]
+    def run_training_loop_multi_neuron_model(self, training_data):
 
         class DataLoader:
             def __init__(self, training_data, batch_size):
@@ -411,7 +1155,11 @@ class ComputationalGraphPrimer(object):
                 batch = [batch_data, batch_labels]
                 return batch                
 
-        data_loader = DataLoader(self.training_data, batch_size=self.batch_size)
+        ## We must initialize the learnable parameters
+        self.vals_for_learnable_params = {param: random.uniform(0,1) for param in self.learnable_params}
+        self.bias = [random.uniform(0,1) for _ in range(self.num_layers-1)]
+
+        data_loader = DataLoader(training_data, batch_size=self.batch_size)
         loss_running_record = []
         i = 0
         avg_loss_over_literations = 0.0
@@ -440,6 +1188,10 @@ class ComputationalGraphPrimer(object):
 
     def forward_prop_multi_neuron_model(self, data_tuples_in_batch):
         """
+
+        See Slides 103 through 108 of Week 3 slides for the logic implemented  here.
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
         During forward propagation, we push each batch of the input data through the
         network.  In order to explain the logic of forward, consider the following network
         layout in 4 nodes in the input layer, 2 nodes in the hidden layer, and 1 node in
@@ -504,8 +1256,13 @@ class ComputationalGraphPrimer(object):
                 self.forw_prop_vals_at_layers[layer_index].append(output_vals_arr)
                 self.gradient_vals_for_layers[layer_index].append(gradients_val_arr)
 
+
     def backprop_and_update_params_multi_neuron_model(self, y_error, class_labels):
         """
+
+        See Slides 103 through 108 of Week 3 slides for the logic implemented  here.
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
         First note that loop index variable 'back_layer_index' starts with the index of
         the last layer.  For the 3-layer example shown for 'forward', back_layer_index
         starts with a value of 2, its next value is 1, and that's it.
@@ -570,12 +1327,12 @@ class ComputationalGraphPrimer(object):
     ### Introduced in 1.0.5
     ######################################################################################################
     ############################# torch.nn based experiments for verification ############################
-    def run_training_with_torchnn(self, option):
+    def run_training_with_torchnn(self, option, training_data):
         """
         The value of the parameter 'option' must be either 'one_neuron' or 'multi_neuron'.
 
         For either option, the number of input nodes is specified by the expressions specified in the        
-        contructor of the class ComputationalGraphPrimer.
+        constructor of the class ComputationalGraphPrimer.
 
         When the option value is 'one_neuron', we use the OneNeuronNet for the learning network and
         when the option is 'multi_neuron' we use the MultiNeuronNet.
@@ -598,22 +1355,23 @@ class ComputationalGraphPrimer(object):
 
 
         """
-        training_data = self.training_data
-
         class DataLoader:
             def __init__(self, training_data, batch_size):
                 self.training_data = training_data
                 self.batch_size = batch_size
                 self.class_0_samples = [(item, 0) for item in self.training_data[0]]
                 self.class_1_samples = [(item, 1) for item in self.training_data[1]]
+
             def __len__(self):
                 return len(self.training_data[0]) + len(self.training_data[1])
+
             def _getitem(self):    
                 cointoss = random.choice([0,1])
                 if cointoss == 0:
                     return random.choice(self.class_0_samples)
                 else:
                     return random.choice(self.class_1_samples)            
+
             def getbatch(self):
                 batch_data,batch_labels = [],[]
                 maxval = 0.0
@@ -627,7 +1385,7 @@ class ComputationalGraphPrimer(object):
                 batch = [batch_data, batch_labels]
                 return batch                
 
-        data_loader = DataLoader(self.training_data, batch_size=self.batch_size)
+        data_loader = DataLoader(training_data, batch_size=self.batch_size)
 
         class OneNeuronNet(torch.nn.Module):
             """
@@ -638,6 +1396,7 @@ class ComputationalGraphPrimer(object):
                 torch.nn.Module.__init__( self )
                 self.linear = torch.nn.Linear(D_in, D_out)
                 self.sigmoid = torch.nn.Sigmoid()
+
             def forward(self, x):
                 h_out = self.linear(x)
                 y_pred = self.sigmoid(h_out)
@@ -694,7 +1453,7 @@ class ComputationalGraphPrimer(object):
 
 
     ######################################################################################################
-    ###############################    for a general graph of nodes   ####################################
+    #####################  experimenting with dataflows in a general graph of nodes  #####################
     def train_on_all_data(self):
         '''
         The purpose of this method is to call forward_propagate_one_input_sample_with_partial_deriv_calc()
@@ -711,17 +1470,18 @@ class ComputationalGraphPrimer(object):
         print("\n\nInitial values for all learnable parameters: %s" % str(self.vals_for_learnable_params))
         for sample_index in range(self.dataset_size):
             if (sample_index > 0) and (sample_index % self.display_loss_how_often == 0):
-                print("\n\n\n\n============  [Forward Propagation] Training with sample indexed: %d ===============" % sample_index)
+                print("\n\n============  [Forward Propagation] Training with sample indexed: %d ===============" % sample_index)
             input_vals_for_ind_vars = {var: self.dataset_input_samples[sample_index][var] for var in self.independent_vars}
             if (sample_index > 0) and (sample_index % self.display_loss_how_often == 0):
                 print("\ninput values for independent variables: ", input_vals_for_ind_vars)
             predicted_output_vals, partial_var_to_param, partial_var_to_var = \
-         self.forward_propagate_one_input_sample_with_partial_deriv_calc(sample_index, input_vals_for_ind_vars)
+                       self.forward_propagate_one_input_sample_with_partial_deriv_calc(sample_index, input_vals_for_ind_vars)
             error = [self.true_output_vals[sample_index][var] - predicted_output_vals[var] for var in self.output_vars]
             loss = np.linalg.norm(error)
             if self.debug:
                 print("\nloss for training sample indexed %d: %s" % (sample_index, str(loss)))
             self.LOSS.append(loss)
+            ##  The following code block prints out the loss and the gradients every, say, 1000 iterations during training:
             if (sample_index > 0) and (sample_index % self.display_loss_how_often == 0):
                 print("\npredicted value at the output nodes: ", predicted_output_vals)
                 print("\nloss for training sample indexed %d: %s" % (sample_index, str(loss)))
@@ -731,8 +1491,13 @@ class ComputationalGraphPrimer(object):
                 print("\nestimated partial derivatives of vars wrt other vars:")
                 for k,v in partial_var_to_var.items():
                     print("\nk=%s     v=%s" % (k, str(v)))
+            ##  The rest of the code in this function is for backpropagating the loss and updating the learnable params:
+            ##  To update the value of each learnable parameter during backprop, we need to find all paths to where
+            ##   that parameter resides in the graph from each output node:
             paths = {param : [] for param in self.learnable_params}
-            for var1 in partial_var_to_param:
+            ## partial_var_to_param dict returned by forward..().  It is a partial derivative of each var to every
+            ##  learnable param at each node of the graph. That is, each node in the graph maintains its own such dict.
+            for var1 in partial_var_to_param:                               
                 for var2 in partial_var_to_param[var1]:
                     for param in self.learnable_params:
                         if partial_var_to_param[var1][var2][param] is not None:
@@ -743,12 +1508,15 @@ class ComputationalGraphPrimer(object):
                     continue
                 for var_out in self.output_vars:        
                     if node in self.depends_on[var_out]:
-                        paths[param].insert(0,var_out) 
+                        ## this tells us which output node contributes to a param -- since the
+                        ## backprop for a param must start at each of those nodes
+                        paths[param].insert(0,var_out)     
                     else:
                         for node2 in self.depends_on[var_out]:
                             if node in self.depends_on[node2]:
                                 paths[param].insert(0,node2)
                                 paths[param].insert(0,var_out)
+            ##  We now multiply the partials along the paths for gradient value for each param:
             for param in self.learnable_params:
                 product_of_partials = 1.0
                 for i in range(len(paths[param]) - 2):
@@ -760,7 +1528,8 @@ class ComputationalGraphPrimer(object):
                 product_of_partials *=  partial_var_to_param[var1][var2][param]
                 self.vals_for_learnable_params[param] -=  self.learning_rate * product_of_partials
             if (sample_index > 0) and (sample_index % self.display_loss_how_often == 0):
-                    print("\n\n\n[sample index: %d]: input val: %s    vals for learnable parameters: %s" % (sample_index, str(input_vals_for_ind_vars), str(self.vals_for_learnable_params)))
+                    print("\n\n[sample index: %d]: input val: %s    vals for learnable parameters: %s" % \
+                                 (sample_index, str(input_vals_for_ind_vars), str(self.vals_for_learnable_params)))
 
 
     def forward_propagate_one_input_sample_with_partial_deriv_calc(self, sample_index, input_vals_for_ind_vars):
@@ -780,13 +1549,15 @@ class ComputationalGraphPrimer(object):
         '''
         predicted_output_vals = {var : None for var in self.output_vars}
         vals_for_dependent_vars = {var: None for var in self.all_vars if var not in self.independent_vars}
-        partials_var_to_param = {var : {var : {ele: None for ele in self.learnable_params} for var in self.all_vars} for var in self.all_vars}
+        partials_var_to_param = {var : {var : {ele: None for ele in self.learnable_params} for 
+                                                               var in self.all_vars} for var in self.all_vars}
         partials_var_to_var =  {var : {var : None for var in self.all_vars} for var in self.all_vars}       
         while any(v is None for v in [vals_for_dependent_vars[x] for x in vals_for_dependent_vars]):
             for var1 in self.all_vars:
                 if var1 in self.dependent_vars and vals_for_dependent_vars[var1] is None: continue
                 for var2 in self.leads_to[var1]:
-                    if any([vals_for_dependent_vars[var] is None for var in self.depends_on[var2] if var not in self.independent_vars]): continue
+                    if any([vals_for_dependent_vars[var] is None for var in self.depends_on[var2] 
+                                                               if var not in self.independent_vars]): continue
                     exp = self.expressions_dict[var2]
                     learnable_params_in_exp = [ele for ele in self.learnable_params if ele in exp]
                     ##  in order to calculate the partials of the node (each node stands for a variable)
@@ -794,7 +1565,7 @@ class ComputationalGraphPrimer(object):
                     ##  source vars, we must break the exp at '+' and '-' operators:
                     parts =  re.split(r'\+|-', exp)
                     if self.debug:
-                        print("\n\n\n\n  ====for var2=%s =================   for exp=%s     parts: %s" % (var2, str(exp), str(parts)))
+                        print("\n\n  ====for var2=%s =================   for exp=%s     parts: %s" % (var2, str(exp), str(parts)))
                     vals_for_parts = []
                     for part in parts:
                         splits_at_arith = re.split(r'\*|/', part)
@@ -831,6 +1602,7 @@ class ComputationalGraphPrimer(object):
                                     var_in_part = ""
                         if self.debug:
                             print("\n\n\nvar_in_part: %s    para_in_part=%s" % (var_in_part, param_in_part))
+
                         part_for_partial_var2var = copy.deepcopy(part)
                         part_for_partial_var2param = copy.deepcopy(part)
                         if self.debug:
@@ -886,55 +1658,6 @@ class ComputationalGraphPrimer(object):
                     vals_for_dependent_vars[var2] = sum(vals_for_parts)
         predicted_output_vals = {var : vals_for_dependent_vars[var] for var in self.output_vars}
         return predicted_output_vals, partials_var_to_param, partials_var_to_var
-
-
-    def forward_propagate_with_partial_deriv_calc(self, input_vals_for_ind_vars, class_label):
-        input_vars = self.independent_vars
-        vals_for_input_vars =  dict(zip(self.independent_vars, list(input_vals_for_ind_vars)))
-        print("\n\nvals_for_input_vars: ", vals_for_input_vars)      
-
-        partials_var_to_param = {var : {ele: None for ele in self.learnable_params} for var in self.all_vars} 
-
-        partials_var_to_var =  {var : {var : None for var in self.all_vars} for var in self.all_vars}       
-        input_vars = self.independent_vars
-
-        exp_obj = self.exp_objects[0]
-        output_val = self.eval_expression(exp_obj.body , vals_for_input_vars, 
-                                                               self.vals_for_learnable_params)
-        ## apply ReLU activation:
-        output_val = output_val if output_val > 0 else 0
-        input_vars = exp_obj.right_vars
-        input_params = exp_obj.right_params
-        output_var = exp_obj.dependent_var
-        print("\n\noutput_val: ", output_val)
-        print("\n\npartials_output_var_to_vars: ", exp_obj.partials_output_var_to_vars)
-        partials_output_var_to_vars = exp_obj.partials_output_var_to_vars
-        print("\n\npartials_output_var_to_params: ", exp_obj.partials_output_var_to_params)
-        partials_output_var_to_params = exp_obj.partials_output_var_to_params
-        target = class_label
-        loss = (target - output_val)**2
-        print("\n\nloss: ", loss)
-        partials_output_var_to_vars_with_vals =  exp_obj.partials_output_var_to_vars_with_vals
-        partials_output_var_to_params_with_vals = exp_obj.partials_output_var_to_params_with_vals
-        for var1 in partials_output_var_to_vars:
-            for var2 in partials_output_var_to_vars[var1]:
-                partials_output_var_to_vars_with_vals[var1][var2] = self.eval_expression(
-                                                                partials_output_var_to_vars[var1][var2],
-                                                                vals_for_input_vars,
-                                                                self.vals_for_learnable_params)
-        for var in partials_output_var_to_params:
-            for param in partials_output_var_to_params[var]:
-                partials_output_var_to_params_with_vals[var][param] = self.eval_expression(
-                                                                partials_output_var_to_params[var][param],
-                                                                vals_for_input_vars,
-                                                                self.vals_for_learnable_params)
-
-        print("\n\npartials_output_var_to_vars_with_vals: ", partials_output_var_to_vars_with_vals)
-        print("\n\npartials_output_var_to_params_with_vals: ", partials_output_var_to_params_with_vals)
-
-        return {'Loss' :  loss, 
-                'partials_output_var_to_vars_with_vals': partials_output_var_to_vars_with_vals, 
-                'partials_output_var_to_params_with_vals': partials_output_var_to_params_with_vals}
     ######################################################################################################
 
 
@@ -1160,6 +1883,21 @@ class ComputationalGraphPrimer(object):
 
 
     def gen_training_data(self):
+        """
+        This 2-class dataset is used for the demos in the following Examples directory scripts:
+
+                    one_neuron_classifier.py
+                    multi_neuron_classifier.py
+                    multi_neuron_classifier.py
+ 
+        The classes are labeled 0 and 1.  All of the data for class 0 is simply a list of 
+        numbers associated with the key 0.  Similarly all the data for class 1 is another list of
+        numbers associated with the key 1.  
+
+        For each class, the dataset starts out as being standard normal (zero mean and unit variance)
+        to which we add a mean value of 2.0 for class 0 and we add mean value of 4 to the square of
+        the original numbers for class 1.
+        """
         num_input_vars = len(self.independent_vars)
         training_data_class_0 = []
         training_data_class_1 = []
@@ -1174,7 +1912,8 @@ class ComputationalGraphPrimer(object):
             for_class_1 = for_class_1 * 2 + 4.0
             training_data_class_0.append( for_class_0 )
             training_data_class_1.append( for_class_1 )
-        self.training_data = {0 : training_data_class_0, 1 : training_data_class_1}
+        training_data = {0 : training_data_class_0, 1 : training_data_class_1}
+        return training_data
 
 
     def gen_gt_dataset_with_activations(self, vals_for_learnable_params={}):
@@ -1233,4 +1972,3 @@ class ComputationalGraphPrimer(object):
 
 if __name__ == '__main__': 
     pass
-

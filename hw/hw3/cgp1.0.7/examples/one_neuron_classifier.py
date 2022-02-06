@@ -11,7 +11,8 @@ other letters of the alphabet are the learnable parameters.
 
 import random
 import numpy
-
+import sys
+sys.path.append("..")
 seed = 0           
 random.seed(seed)
 numpy.random.seed(seed)
