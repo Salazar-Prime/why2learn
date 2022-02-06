@@ -6,7 +6,6 @@ Last Modified: 5 Feb 2022
 
 import random
 import numpy as np
-import sys
 import operator
 import matplotlib.pyplot as plt
 from ComputationalGraphPrimer import *
@@ -20,9 +19,7 @@ class cgpSuperCharged(ComputationalGraphPrimer):
     def __init__(self, mu=0.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mu = mu
-        self.step_hist = 0
-        self.bias_hist = 0
-
+    
     def backprop_and_update_params_one_neuron_model(
         self, y_error_avg, data_tuple_avg, deriv_sigmoid_avg
     ):
@@ -38,6 +35,10 @@ class cgpSuperCharged(ComputationalGraphPrimer):
         vals_for_input_vars_dict = dict(zip(input_vars, list(data_tuple_avg)))
         vals_for_learnable_params = self.vals_for_learnable_params
 
+        # preparing varibles
+        step_hist = list(np.zeros(len(self.vals_for_learnable_params)))
+        bias_hist = 0
+
         for i, param in enumerate(self.vals_for_learnable_params):
             ## calculate the next step in the parameter hyperplane
 
@@ -48,18 +49,17 @@ class cgpSuperCharged(ComputationalGraphPrimer):
                 * deriv_sigmoid_avg
             )
 
-            step = self.mu * self.step_hist[i] + self.learning_rate * g_tp1
+            step = self.mu * step_hist[i] + self.learning_rate * g_tp1
             self.vals_for_learnable_params[param] += step
 
             # update step_hist
-            self.step_hist[i] = step
+            step_hist[i] = step
 
         ## Bias momentum step
-        self.bias_hist = (
-            self.mu * self.bias_hist
-            + self.learning_rate * y_error_avg * deriv_sigmoid_avg
+        bias_hist = (
+            self.mu * bias_hist + self.learning_rate * y_error_avg * deriv_sigmoid_avg
         )
-        self.bias += self.bias_hist
+        self.bias += bias_hist
 
     def run_training_loop_one_neuron_model(self, training_data):
         """
@@ -68,8 +68,7 @@ class cgpSuperCharged(ComputationalGraphPrimer):
         Modified by: Varun Aggarwal
 
         Modifications:
-        Added step_hist initialization
-        for SGDplusMomentum optimizer
+        None
         """
         self.vals_for_learnable_params = {
             param: random.uniform(0, 1) for param in self.learnable_params
@@ -122,9 +121,6 @@ class cgpSuperCharged(ComputationalGraphPrimer):
         i = 0
         avg_loss_over_literations = 0.0
 
-        # preparing varibles
-        self.step_hist = list(np.zeros(len(self.learnable_params)))
-
         for i in range(self.training_iterations):
             data = data_loader.getbatch()
             data_tuples = data[0]
@@ -161,6 +157,7 @@ class cgpSuperCharged(ComputationalGraphPrimer):
         return loss_running_record
 
 
+# SGD with momentum
 cgp = cgpSuperCharged(
     one_neuron_model=True,
     expressions=["xw=ab*xa+bc*xb+cd*xc+ac*xd"],
@@ -174,6 +171,7 @@ cgp = cgpSuperCharged(
     mu=0.9,
 )
 
+# Vanilla SGD
 cgp_original = ComputationalGraphPrimer(
     one_neuron_model=True,
     expressions=["xw=ab*xa+bc*xb+cd*xc+ac*xd"],
@@ -186,6 +184,7 @@ cgp_original = ComputationalGraphPrimer(
     debug=True,
 )
 
+plt.show(block=True)
 # Loss with SGDmomentum
 cgp.parse_expressions()
 training_data = cgp.gen_training_data()
@@ -204,4 +203,4 @@ plt.legend(["SGD plus momentum", "SGD Vanilla"])
 plt.title("One Neuron Training")
 plt.xlabel("Iterations (Sampled)")
 plt.ylabel("Loss")
-plt.savefig("../output/One_with_momentum.png")
+plt.savefig("../output/one_with_momentum.png")
