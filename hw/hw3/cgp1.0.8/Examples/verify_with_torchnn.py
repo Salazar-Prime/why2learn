@@ -30,6 +30,9 @@ import numpy
 import torch
 import os
 
+import sys
+sys.path.append("..")
+
 seed = 0           
 random.seed(seed)
 numpy.random.seed(seed)
@@ -41,21 +44,39 @@ from ComputationalGraphPrimer import *
 cgp = ComputationalGraphPrimer(
                expressions = ['xw=ab*xa+bc*xb+cd*xc+ac*xd'],   # Only used to determine the data dimensionality
                dataset_size = 5000,
-               learning_rate = 1e-6,              # For the multi-neuron option below
-#               learning_rate = 1e-3,             # For the one-neuron option below
-#               learning_rate = 5 * 1e-2,         # Also for the one-neuron option below
+               # learning_rate = 1e-6,              # For the multi-neuron option below
+              # learning_rate = 1e-3,             # For the one-neuron option below
+              learning_rate = 5 * 1e-2,         # Also for the one-neuron option below
                training_iterations = 40000,
                batch_size = 8,
                display_loss_how_often = 100,
       )
 
 
+# cgp = ComputationalGraphPrimer(
+#                num_layers = 3,
+#                layers_config = [4,2,1],                         # num of nodes in each layer
+#                expressions = ['xw=ap*xp+aq*xq+ar*xr+as*xs',
+#                               'xz=bp*xp+bq*xq+br*xr+bs*xs',
+#                               'xo=cp*xw+cq*xz'],
+#                output_vars = ['xo'],
+#                dataset_size = 5000,
+#                learning_rate = 1e-3,
+#                training_iterations = 40000,
+#                batch_size = 8,
+#                display_loss_how_often = 100,
+# )
+
 ##  This call is needed for generating the training data:
+
+# multilayer
+# cgp.parse_multi_layer_expressions()
+# training_data = cgp.gen_training_data()
+# cgp.run_training_with_torchnn('multi_neuron', training_data)                 ## (B)
+
+# one neuran
 cgp.parse_expressions()                               
-
 training_data = cgp.gen_training_data()
+cgp.run_training_with_torchnn('one_neuron', training_data)                  ## (A)
 
-#cgp.run_training_with_torchnn('one_neuron', training_data)                  ## (A)
-
-cgp.run_training_with_torchnn('multi_neuron', training_data)                 ## (B)
 

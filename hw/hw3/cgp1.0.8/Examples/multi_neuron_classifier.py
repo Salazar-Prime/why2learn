@@ -40,6 +40,9 @@ Both of these functions are called by the training function:
 import random
 import numpy
 
+import sys
+sys.path.append("..")
+
 seed = 0           
 random.seed(seed)
 numpy.random.seed(seed)
