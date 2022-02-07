@@ -19,7 +19,7 @@ class cgpSuperCharged(ComputationalGraphPrimer):
     def __init__(self, mu=0.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.mu = mu
-    
+
     def backprop_and_update_params_one_neuron_model(
         self, y_error_avg, data_tuple_avg, deriv_sigmoid_avg
     ):
@@ -49,17 +49,18 @@ class cgpSuperCharged(ComputationalGraphPrimer):
                 * deriv_sigmoid_avg
             )
 
-            step = self.mu * step_hist[i] + self.learning_rate * g_tp1
+            step = self.mu * self.step_hist[i] + self.learning_rate * g_tp1
             self.vals_for_learnable_params[param] += step
 
             # update step_hist
-            step_hist[i] = step
+            self.step_hist[i] = step
 
         ## Bias momentum step
-        bias_hist = (
-            self.mu * bias_hist + self.learning_rate * y_error_avg * deriv_sigmoid_avg
+        self.bias_hist = (
+            self.mu * self.bias_hist
+            + self.learning_rate * y_error_avg * deriv_sigmoid_avg
         )
-        self.bias += bias_hist
+        self.bias += self.bias_hist
 
     def run_training_loop_one_neuron_model(self, training_data):
         """
@@ -68,7 +69,7 @@ class cgpSuperCharged(ComputationalGraphPrimer):
         Modified by: Varun Aggarwal
 
         Modifications:
-        None
+        initializing step_hist and bias_hist
         """
         self.vals_for_learnable_params = {
             param: random.uniform(0, 1) for param in self.learnable_params
@@ -121,6 +122,10 @@ class cgpSuperCharged(ComputationalGraphPrimer):
         i = 0
         avg_loss_over_literations = 0.0
 
+        # preparing varibles
+        self.bias_hist = 0
+        self.step_hist = list(np.zeros(len(self.learnable_params)))
+
         for i in range(self.training_iterations):
             data = data_loader.getbatch()
             data_tuples = data[0]
@@ -165,7 +170,7 @@ cgp = cgpSuperCharged(
     dataset_size=5000,
     learning_rate=1e-3,
     training_iterations=40000,
-    batch_size=8,
+    batch_size=16,
     display_loss_how_often=100,
     debug=True,
     mu=0.9,
@@ -179,7 +184,7 @@ cgp_original = ComputationalGraphPrimer(
     dataset_size=5000,
     learning_rate=1e-3,
     training_iterations=40000,
-    batch_size=8,
+    batch_size=16,
     display_loss_how_often=100,
     debug=True,
 )

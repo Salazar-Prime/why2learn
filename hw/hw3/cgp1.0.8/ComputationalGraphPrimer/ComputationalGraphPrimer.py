@@ -1182,9 +1182,9 @@ class ComputationalGraphPrimer(object):
             y_errors = list(map(operator.sub, class_labels, y_preds))
             y_error_avg = sum(y_errors) / float(len(class_labels))
             self.backprop_and_update_params_multi_neuron_model(y_error_avg, class_labels)
-        plt.figure()     
-        plt.plot(loss_running_record) 
-        plt.show()   
+# plt.figure()
+# plt.plot(loss_running_record)
+# plt.show()
         return loss_running_record
 
 

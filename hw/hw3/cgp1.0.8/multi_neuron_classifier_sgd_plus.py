@@ -34,10 +34,6 @@ class cgpSuperCharged(ComputationalGraphPrimer):
         pred_err_backproped_at_layers = {i: [] for i in range(1, self.num_layers - 1)}
         pred_err_backproped_at_layers[self.num_layers - 1] = [y_error]
 
-        # preparing varibles
-        step_hist = list(np.zeros(len(self.learnable_params)))
-        bias_hist = 0
-
         for back_layer_index in reversed(range(1, self.num_layers)):
             input_vals = self.forw_prop_vals_at_layers[back_layer_index - 1]
             input_vals_avg = [sum(x) for x in zip(*input_vals)]
@@ -94,17 +90,17 @@ class cgpSuperCharged(ComputationalGraphPrimer):
                         * pred_err_backproped_at_layers[back_layer_index][j]
                     ) * deriv_sigmoid_avg[j]
 
-                    step = self.mu * step_hist[i] + self.learning_rate * g_tp1
+                    step = self.mu * self.step_hist[i] + self.learning_rate * g_tp1
                     self.vals_for_learnable_params[param] += step
 
                     # update step_hist
-                    step_hist[i] = step
+                    self.step_hist[i] = step
 
             ## Bias momentum step
-            bias_hist = self.mu * bias_hist + self.learning_rate * sum(
+            self.bias_hist = self.mu * self.bias_hist + self.learning_rate * sum(
                 pred_err_backproped_at_layers[back_layer_index]
             ) * sum(deriv_sigmoid_avg) / len(deriv_sigmoid_avg)
-            self.bias[back_layer_index - 1] += bias_hist
+            self.bias[back_layer_index - 1] += self.bias_hist
 
     def run_training_loop_multi_neuron_model(self, training_data):
         """
@@ -113,7 +109,7 @@ class cgpSuperCharged(ComputationalGraphPrimer):
         Modified by: Varun Aggarwal
 
         Modifications:
-        None
+        initializing step_hist and bias_hist
         """
 
         class DataLoader:
@@ -156,6 +152,10 @@ class cgpSuperCharged(ComputationalGraphPrimer):
         loss_running_record = []
         i = 0
         avg_loss_over_literations = 0.0
+
+        # preparing varibles
+        self.bias_hist = 0
+        self.step_hist = list(np.zeros(len(self.learnable_params)))
 
         for i in range(self.training_iterations):
             data = data_loader.getbatch()
@@ -245,3 +245,4 @@ plt.title("Multi Neuron Training")
 plt.xlabel("Iterations (Sampled)")
 plt.ylabel("Loss")
 plt.savefig("../output/multi_with_momentum.png")
+# plt.show()
