@@ -1,0 +1,50 @@
+
+
+Prediction accuracy for plane : 78 %
+
+
+Prediction accuracy for   car : 87 %
+
+
+Prediction accuracy for  bird : 66 %
+
+
+Prediction accuracy for   cat : 51 %
+
+
+Prediction accuracy for  deer : 64 %
+
+
+Prediction accuracy for   dog : 39 %
+
+
+Prediction accuracy for  frog : 77 %
+
+
+Prediction accuracy for horse : 79 %
+
+
+Prediction accuracy for  ship : 74 %
+
+
+Prediction accuracy for truck : 61 %
+
+
+
+Overall accuracy of the network on the 10000 test images: 68 %
+
+
+Displaying the confusion matrix:
+
+           plane    car   bird    cat   deer    dog   frog  horse   ship  truck
+
+ plane:    78.10   2.50   8.70   1.60   1.20   0.20   0.70   1.90   3.40   1.70
+   car:     2.90  87.60   1.20   0.40   0.30   0.10   0.40   1.00   1.30   4.80
+  bird:     5.50   0.90  66.00   5.00   8.60   2.70   5.70   4.60   0.70   0.30
+   cat:     2.60   1.90  10.90  51.50  10.80   6.00   9.60   4.00   2.00   0.70
+  deer:     2.90   0.50  10.80   4.00  64.60   0.60   3.50  11.80   1.30   0.00
+   dog:     1.50   1.20  11.70  26.60   7.50  39.80   3.90   6.00   1.50   0.30
+  frog:     0.40   1.00   9.20   3.80   6.60   0.60  77.20   0.90   0.20   0.10
+ horse:     1.10   0.50   5.70   4.30   6.20   1.70   0.70  79.40   0.30   0.10
+  ship:    13.00   5.50   2.60   0.20   0.70   0.20   0.60   0.60  74.80   1.80
+ truck:     6.30  19.20   1.70   2.50   0.80   0.20   1.00   4.10   2.50  61.70

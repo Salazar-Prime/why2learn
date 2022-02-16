@@ -13,6 +13,8 @@ import numpy
 import torch
 import os, sys
 
+sys.path.append("/home/varun/work/courses/why2learn/hw/hw4/DLStudio-2.1.6")
+
 """
 seed = 0           
 random.seed(seed)
@@ -25,35 +27,50 @@ os.environ['PYTHONHASHSEED'] = str(seed)
 """
 
 ##  watch -d -n 0.5 nvidia-smi
-
 from DLStudio import *
 
 dls = DLStudio(
-#                  dataroot = "/home/kak/ImageDatasets/CIFAR-10/",
-                  dataroot = "./data/CIFAR-10/",
-                  image_size = [32,32],
-                  path_saved_model = "./saved_model",
-                  momentum = 0.9,
-                  learning_rate = 1e-3,
-                  epochs = 2,
-                  batch_size = 4,
-                  classes = ('plane','car','bird','cat','deer','dog','frog','horse','ship','truck'),
-                  use_gpu = True,
-              )
+    #                  dataroot = "/home/kak/ImageDatasets/CIFAR-10/",
+    dataroot="./data/CIFAR-10/",
+    image_size=[32, 32],
+    path_saved_model="./saved_model",
+    momentum=0.9,
+    learning_rate=1e-3,
+    epochs=2,
+    batch_size=4,
+    classes=(
+        "plane",
+        "car",
+        "bird",
+        "cat",
+        "deer",
+        "dog",
+        "frog",
+        "horse",
+        "ship",
+        "truck",
+    ),
+    use_gpu=True,
+)
 
 
-exp_cifar = DLStudio.ExperimentsWithCIFAR( dl_studio = dls )
+exp_cifar = DLStudio.ExperimentsWithCIFAR(dl_studio=dls)
 
-#exp_cifar.load_cifar_10_dataset_with_augmentation()
+# exp_cifar.load_cifar_10_dataset_with_augmentation()
 exp_cifar.load_cifar_10_dataset()
 
-model = exp_cifar.Net()
-#model = exp_cifar.Net2()            ## <<< Try this also but first comment out 
-                                     ##     the above line.
+# model = exp_cifar.Net()
+model = exp_cifar.Net2()  ## <<< Try this also but first comment out
+##     the above line.
 
 ## display network properties
-number_of_learnable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
-print("\n\nThe number of learnable parameters in the model: %d" % number_of_learnable_params)
+number_of_learnable_params = sum(
+    p.numel() for p in model.parameters() if p.requires_grad
+)
+print(
+    "\n\nThe number of learnable parameters in the model: %d"
+    % number_of_learnable_params
+)
 num_layers = len(list(model.parameters()))
 print("\nThe number of layers in the model: %d" % num_layers)
 
@@ -61,4 +78,3 @@ print("\nThe number of layers in the model: %d" % num_layers)
 exp_cifar.run_code_for_training(model, display_images=False)
 
 exp_cifar.run_code_for_testing(model, display_images=False)
-
