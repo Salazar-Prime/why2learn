@@ -1,2 +1,3 @@
+*.pth
 data
 saved_model
