@@ -1,12 +1,8 @@
 import matplotlib.pyplot as plt
 
 import torch
-# import torchvision
-# import torch.nn as nn
 from torch.utils.data import DataLoader
-# from torchvision.io import read_image
 import torchvision.transforms as tvt
-# import torch.nn.functional as F
 
 import numpy as np
 import time

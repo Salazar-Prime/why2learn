@@ -29,8 +29,11 @@ class dataLoader(Dataset):
             image = self.transform(image)
         
         return image, label
-    
+        
     def labelForImg(self):
+        # get list of classes form datapath 
+        self.classes = os.listdir(self.dataPath)
+        # connect label with classes 
         for i, cls in enumerate(self.classes):
             imgs = glob.glob(os.path.join(self.dataPath,cls,'*'))
             if i==0:
