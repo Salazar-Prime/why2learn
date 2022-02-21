@@ -52,7 +52,7 @@ dataPath = "../hw04_coco_data/Train"
 transform = tvt.Compose([tvt.ToTensor(), tvt.Normalize((0.5,0.5, 0.5), (0.5, 0.5, 0.5))])            
 
 # data load        
-dt = dataLoader(dataPath,["refrigerator","airplane","giraffe","cat","elephant","dog","train","horse","boat","truck"],transform)
+dt = dataLoader(dataPath,transform)
 TrainDataLoader = DataLoader(dataset = dt, batch_size = batch, shuffle = True, num_workers = 16)
 
 # train network

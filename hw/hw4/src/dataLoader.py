@@ -5,9 +5,9 @@ import os, glob
 import numpy as np
 
 class dataLoader(Dataset):
-    def __init__(self,dataPath,classes,transform):
+    def __init__(self,dataPath,transform):
         self.dataPath = dataPath
-        self.classes = classes
+        self.classes = []
         self.transform = transform
         # image list and corresponding label
         self.imgList = []
@@ -32,7 +32,8 @@ class dataLoader(Dataset):
         
     def labelForImg(self):
         # get list of classes form datapath 
-        self.classes = os.listdir(self.dataPath)
+        self.classes = np.sort(os.listdir(self.dataPath))
+        print(self.classes)
         # connect label with classes 
         for i, cls in enumerate(self.classes):
             imgs = glob.glob(os.path.join(self.dataPath,cls,'*'))
