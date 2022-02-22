@@ -1,3 +1,9 @@
+"""
+Homework 4: Create Convolution Neural Network (CNN)  
+Author: Varun Aggarwal
+Last Modified: 10 Feb 2022
+"""
+
 import torch
 from torch.utils.data import Dataset
 from PIL import Image

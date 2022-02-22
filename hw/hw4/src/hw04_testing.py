@@ -1,3 +1,9 @@
+"""
+Homework 4: Create Convolution Neural Network (CNN)  
+Author: Varun Aggarwal
+Last Modified: 10 Feb 2022
+"""
+
 import matplotlib.pyplot as plt
 
 import torch
