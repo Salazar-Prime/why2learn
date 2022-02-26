@@ -18,7 +18,7 @@ import random
 import numpy
 import torch
 import os, sys
-
+sys.path.append("..")
 """
 seed = 0           
 random.seed(seed)

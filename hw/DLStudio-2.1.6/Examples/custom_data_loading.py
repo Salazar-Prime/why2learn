@@ -26,12 +26,12 @@ os.environ['PYTHONHASHSEED'] = str(seed)
 """
 
 ##  watch -d -n 0.5 nvidia-smi
-
+sys.path.append("/home/varun/work/courses/why2learn/hw/DLStudio-2.1.6/")
 from DLStudio import *
 
 dls = DLStudio(
 #                  dataroot = "/home/kak/ImageDatasets/PurdueShapes5/",
-                  dataroot = "./data/PurdueShapes5/",
+                  dataroot = "./data/",
                   image_size = [32,32],
                   path_saved_model = "./saved_model",
                   momentum = 0.9,
