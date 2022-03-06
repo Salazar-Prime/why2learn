@@ -3383,10 +3383,10 @@ class DLStudio(object):
                         logger = logging.getLogger()
                         old_level = logger.level
                         logger.setLevel(100)
-                        plt.figure(figsize=[8,3])
-                        plt.imshow(np.transpose(torchvision.utils.make_grid(inputs_copy, normalize=True,
-                                                                         padding=3, pad_value=255).cpu(), (1,2,0)))
-                        plt.show()
+                        # plt.figure(figsize=[8,3])
+                        # plt.imshow(np.transpose(torchvision.utils.make_grid(inputs_copy, normalize=True,
+                        #                                                  padding=3, pad_value=255).cpu(), (1,2,0)))
+                        # plt.show()
                         logger.setLevel(old_level)
             print("\nFinished Training\n")
             self.save_model(net)

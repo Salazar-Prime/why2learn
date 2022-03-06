@@ -1,4 +1,5 @@
 # USER
+*.pt
 temp
 # swap files
 *.swp
