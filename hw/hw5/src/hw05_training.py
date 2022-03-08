@@ -1,10 +1,12 @@
 """
-Homework 5: Create custom skipblock 
+Homework 5: Create custom skipblock and train/test
+            modified from DLStudio
+
 Author: Varun Aggarwal
-Last Modified: 06 Mar 2022
+Last Modified: 07 Mar 2022
 """
 
-import random
+import copy, time
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,9 +14,9 @@ import torch.nn.functional as F
 import torchvision                  
 import torchvision.transforms as tvt
 import torch.optim as optim
-
-import os, sys
-
+from pycocotools.coco import COCO
+import os, sys, logging
+import matplotlib.pyplot as plt
 # USER imports
 sys.path.append("/home/varun/work/courses/why2learn/hw/DLStudio-2.1.6/")
 from DLStudio import *
@@ -22,20 +24,8 @@ from DLStudio import *
 sys.path.append("/home/varun/work/courses/why2learn/hw/DLStudio-2.1.6/Examples")
 from model import pneumaNet
 
-import dataloader
-
-
-"""
-seed = 0           
-random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed(seed)
-numpy.random.seed(seed)
-torch.backends.cudnn.deterministic=True
-torch.backends.cudnn.benchmarks=False
-os.environ['PYTHONHASHSEED'] = str(seed)
-"""
-
+from dataloader import CocoDetection
+import utils
 
 class tool(DLStudio):
     def __init__(self, *args, **kwargs) -> None:
@@ -44,17 +34,25 @@ class tool(DLStudio):
     class fearInoculum(DLStudio.DetectAndLocalize):
         def __init__(self, dl_studio, dataserver_train=None,dataserver_test=None,dataset_file_train=None,dataset_file_test=None,):
             super().__init__(dl_studio, dataserver_train,dataserver_test,dataset_file_train,dataset_file_test,)
-         
-        def run_code_for_training_with_CrossEntropy_and_MSE_Losses(net):
+            self.dl_studio = dl_studio
+        
+        def run_code_for_training_with_CrossEntropy_and_MSE_Losses(self, net):
+            # create files for saving trainng logs
             filename_for_out1 = "performance_numbers_" + str(self.dl_studio.epochs) + "label.txt"
             filename_for_out2 = "performance_numbers_" + str(self.dl_studio.epochs) + "regres.txt"
             FILE1 = open(filename_for_out1, 'w')
             FILE2 = open(filename_for_out2, 'w')
+
+            # copy the model
             net = copy.deepcopy(net)
             net = net.to(self.dl_studio.device)
+
+            # setup criterions for backprop
             criterion1 = nn.CrossEntropyLoss()
             criterion2 = nn.MSELoss()
             optimizer = optim.SGD(net.parameters(), lr=self.dl_studio.learning_rate, momentum=self.dl_studio.momentum)
+            
+            # Start training 
             print("\n\nStarting training loop...\n\n")
             start_time = time.perf_counter()
             labeling_loss_tally = []   
@@ -65,7 +63,6 @@ class tool(DLStudio):
                 running_loss_labeling = 0.0
                 running_loss_regression = 0.0       
                 for i, data in enumerate(self.train_dataloader):
-                    gt_too_small = False
                     inputs, bbox_gt, labels = data['image'], data['bbox'], data['label']
                     if i % 500 == 499:
                         current_time = time.perf_counter()
@@ -88,33 +85,39 @@ class tool(DLStudio):
                         inputs_copy = inputs.detach().clone()
                         inputs_copy = inputs_copy.cpu()
                         bbox_pc = bbox_pred.detach().clone()
+                        bbox_pc_copy = bbox_pred.detach().clone()
                         bbox_pc[bbox_pc<0] = 0
-                        bbox_pc[bbox_pc>31] = 31
+                        bbox_pc[bbox_pc>1] = 1
                         bbox_pc[torch.isnan(bbox_pc)] = 0
                         _, predicted = torch.max(outputs_label.data, 1)
-                        print("[epoch:%d/%d  iter=%4d  elapsed_time=%5d secs]  Predicted Labels:     " % 
-                                (epoch+1, self.dl_studio.epochs, i+1, elapsed_time)  
-                              + ' '.join('%10s' % self.dataserver_train.class_labels[predicted[j].item()] 
-                                                                 for j in range(self.dl_studio.batch_size)))
+                        print("[epoch:%d/%d  iter=%4d  elapsed_time=%5d secs]  Predicted Labels:     " % (epoch+1, self.dl_studio.epochs, i+1, elapsed_time)  + ' '.join('%10s' % self.dataserver_train.class_labels[predicted[j].item()] for j in range(self.dl_studio.batch_size)))
                         for idx in range(self.dl_studio.batch_size):
-                            i1 = int(bbox_gt[idx][1])
-                            i2 = int(bbox_gt[idx][3])
-                            j1 = int(bbox_gt[idx][0])
-                            j2 = int(bbox_gt[idx][2])
-                            k1 = int(bbox_pc[idx][1])
-                            k2 = int(bbox_pc[idx][3])
-                            l1 = int(bbox_pc[idx][0])
-                            l2 = int(bbox_pc[idx][2])
+                            bbox_gt_copy = bbox_gt.detach().clone()
+                            bbox_gt_copy = bbox_gt_copy.cpu()
+                            bbox_pc_copy = bbox_pc_copy.cpu()
+                            i1 = bbox_gt_copy[idx][1]
+                            i2 = bbox_gt_copy[idx][3]
+                            j1 = bbox_gt_copy[idx][0]
+                            j2 = bbox_gt_copy[idx][2]
+                            k1 = bbox_pc_copy[idx][1]
+                            k2 = bbox_pc_copy[idx][3]
+                            l1 = bbox_pc_copy[idx][0]
+                            l2 = bbox_pc_copy[idx][2]
+                            [j1,i1,j2,i2] = [int(x) for x in utils.unnormalize([j1,i1,j2,i2])]
+                            [l1,k1,l2,k2] = [int(x) for x in utils.unnormalize([l1,k1,l2,k2])]
                             print("                    gt_bb:  [%d,%d,%d,%d]"%(j1,i1,j2,i2))
                             print("                  pred_bb:  [%d,%d,%d,%d]"%(l1,k1,l2,k2))
-                            inputs_copy[idx,0,i1:i2,j1] = 255
-                            inputs_copy[idx,0,i1:i2,j2] = 255
-                            inputs_copy[idx,0,i1,j1:j2] = 255
-                            inputs_copy[idx,0,i2,j1:j2] = 255
-                            inputs_copy[idx,2,k1:k2,l1] = 255                      
-                            inputs_copy[idx,2,k1:k2,l2] = 255
-                            inputs_copy[idx,2,k1,l1:l2] = 255
-                            inputs_copy[idx,2,k2,l1:l2] = 255
+                            try:
+                                inputs_copy[idx,0,i1:i2,j1] = 255
+                                inputs_copy[idx,0,i1:i2,j2] = 255
+                                inputs_copy[idx,0,i1,j1:j2] = 255
+                                inputs_copy[idx,0,i2,j1:j2] = 255
+                                inputs_copy[idx,2,k1:k2,l1] = 255                      
+                                inputs_copy[idx,2,k1:k2,l2] = 255
+                                inputs_copy[idx,2,k1,l1:l2] = 255
+                                inputs_copy[idx,2,k2,l1:l2] = 255
+                            except:
+                                print("index out of bound, Skipping")
                     loss_labeling = criterion1(outputs_label, labels)
                     loss_labeling.backward(retain_graph=True)        
                     loss_regression = criterion2(bbox_pred, bbox_gt)
@@ -134,14 +137,14 @@ class tool(DLStudio):
                         FILE2.flush()
                         running_loss_labeling = 0.0
                         running_loss_regression = 0.0
-                    if i%500==499:
+                    if i%500==499 and epoch == self.dl_studio.epochs-1:
                         logger = logging.getLogger()
                         old_level = logger.level
                         logger.setLevel(100)
-                        # plt.figure(figsize=[8,3])
-                        # plt.imshow(np.transpose(torchvision.utils.make_grid(inputs_copy, normalize=True,
-                        #                                                  padding=3, pad_value=255).cpu(), (1,2,0)))
-                        # plt.show()
+                        plt.figure(figsize=[8,3])
+                        plt.imshow(np.transpose(torchvision.utils.make_grid(inputs_copy, normalize=False,
+                                                                         padding=3, pad_value=255).cpu(), (1,2,0)))
+                        plt.show()
                         logger.setLevel(old_level)
             print("\nFinished Training\n")
             self.save_model(net)
@@ -164,33 +167,28 @@ class tool(DLStudio):
 
 
 
-dls = tool(
-    dataroot="/home/varun/work/courses/why2learn/hw/DLStudio-2.1.6/Examples/data/",
-    image_size=[32, 32],
+invincible = tool(
+    dataroot='/home/varun/work/courses/why2learn/hw/hw5/data',
+    image_size=[64, 64],
     path_saved_model="/home/varun/work/courses/why2learn/hw/hw5/saves/saved_model.pt",
     momentum=0.9,
     learning_rate=1e-4,
-    epochs=2,
+    epochs=10,
     batch_size=4,
-    classes=("rectangle", "triangle", "disk", "oval", "star"),
+    classes=['cat','train','airplane'],
     use_gpu=True,
 )
 
 
-detector = DLStudio.DetectAndLocalize(dl_studio=dls)
+detector = tool.fearInoculum(dl_studio=invincible)
+transform = tvt.Compose([tvt.ToTensor(),tvt.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])  
 
-dataserver_train = DLStudio.DetectAndLocalize.PurdueShapes5Dataset(
-    train_or_test="train",
-    dl_studio=dls,
-    dataset_file="PurdueShapes5-10000-train.gz",
-)
-dataserver_test = DLStudio.DetectAndLocalize.PurdueShapes5Dataset(
-    train_or_test="test", dl_studio=dls, dataset_file="PurdueShapes5-1000-test.gz"
-)
+# prepare train dataloader
+coco  = COCO('/home/varun/work/courses/why2learn/hw/annotations/instances_train2017.json')
+dataserver_train = CocoDetection(transform, invincible.dataroot, invincible.class_labels, invincible.image_size, coco, loadDict=True, saveDict=False, mode="train")
 detector.dataserver_train = dataserver_train
-detector.dataserver_test = dataserver_test
-
-detector.load_PurdueShapes5_dataset(dataserver_train, dataserver_test)
+train_dataloader = torch.utils.data.DataLoader(dataserver_train, batch_size=invincible.batch_size, shuffle=True, num_workers=16)
+detector.train_dataloader =train_dataloader
 
 # model = detector.LOADnet2(skip_connections=True, depth=8)
 model = pneumaNet(depth=16)
@@ -208,9 +206,3 @@ print("\nThe number of layers in the model: %d\n\n" % num_layers)
 
 
 detector.run_code_for_training_with_CrossEntropy_and_MSE_Losses(model)
-
-import pymsgbox
-
-response = pymsgbox.confirm("Finished training.  Start testing on unseen data?")
-if response == "OK":
-    detector.run_code_for_testing_detection_and_localization(model)

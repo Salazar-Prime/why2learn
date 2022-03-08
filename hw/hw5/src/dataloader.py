@@ -1,3 +1,11 @@
+"""
+Homework 5: Create custom skipblock and train/test
+            modified from DLStudio
+
+Author: Varun Aggarwal
+Last Modified: 07 Mar 2022
+"""
+
 from pycocotools.coco import COCO
 import os
 import numpy as np
@@ -13,9 +21,9 @@ import numpy as np
 import utils, pickle
 
 class CocoDetection(Dataset):
-    def __init__(self,transform,dataPath,classes,size,coco,loadDict=False,mode="test"):
+    def __init__(self,transform,dataPath,classes,size,coco,loadDict=False, saveDict=False,mode="test"):
         self.dataPath = dataPath
-        self.classes = classes
+        self.class_labels = classes
         self.transform = transform
 
         # load pre-existing dictionary 
@@ -26,21 +34,22 @@ class CocoDetection(Dataset):
             with open(os.path.join(dataPath,'dictTest.pkl'), 'rb') as file:  
                 self.imgDict = pickle.load(file)
         elif mode=="train":
-            self.imgDict = utils.downloadCOCO(dataPath,classes,size,coco,True)
+            self.imgDict = utils.downloadCOCO(dataPath,classes,size,coco,saveDict)
         elif mode=="test":
-            self.imgDict = utils.downloadCOCO(dataPath,classes,size,coco,True)
+            self.imgDict = utils.downloadCOCO(dataPath,classes,size,coco,saveDict)
         else:
             print("Something is wrong here !!!")
             sys.exit()
+        self.imgDict = list(self.imgDict.values())
         
     def __len__(self):
         return len(self.imgDict)
     
     def __getitem__(self,idx):
         img = self.imgDict[idx]
-        label = torch.tensor(img['classID'], dtype=torch.uint8)
-        bbox = torch.tensor(img['bbox'], dtype=float)
+        label = torch.tensor(img['classID'], dtype=torch.long)
+        bbox = torch.tensor(img['bbox'], dtype=torch.float)
         if self.transform:
             image = self.transform(img['imgActual'])
         
-        return image, label, bbox
+        return {'image':image, 'label':label, 'bbox':bbox}

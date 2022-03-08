@@ -3425,7 +3425,8 @@ class DLStudio(object):
             with torch.no_grad():
                 for i, data in enumerate(self.test_dataloader):
                     images, bounding_box, labels = data['image'], data['bbox'], data['label']
-                    labels = labels.tolist()
+                    if len(labels) != 4:
+                        labels = labels.tolist()
                     if self.dl_studio.debug_test and i % 50 == 0:
                         print("\n\n[i=%d:] Ground Truth:     " %i + ' '.join('%10s' % 
                          self.dataserver_train.class_labels[labels[j]] for j in range(self.dl_studio.batch_size)))

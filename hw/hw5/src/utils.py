@@ -1,3 +1,11 @@
+"""
+Homework 5: Create custom skipblock and train/test
+            modified from DLStudio
+
+Author: Varun Aggarwal
+Last Modified: 07 Mar 2022
+"""
+
 from pycocotools.coco import COCO
 import os, sys
 import numpy as np
@@ -10,82 +18,11 @@ import requests
 from io import BytesIO
 import pickle
 
-# def valid_imgae_ids(annFile):
-#      coco = COCO(annFile)
-#      class_list = ['bus','car']
-#      coco_labels_inverse = {}
+def normalize(data,min=0.0,max=63.0):
+    return list((np.array(data) - min)/(max-min))
 
-
-#         # get img path 
-#         catIds = coco.getCatIds(catNms=class_list)
-#         categories = coco.loadCats(catIds)
-#         categories.sort(key=lambda x: x['id'])
-
-#         # cocoInverse
-#         for idx ,in_class in enumerate(class_list):
-#             for c in categories:
-#                 if c['name'] == in_class:
-#                     coco_labels_inverse[c['id']] = idx
-        
-#         # loading annotations
-#         scale = 4
-#         #Retrieve Image list
-#         imgIds = coco.getImgIds(catIds=catIds )
-
-#         for data_img in all_images:
-#             I = io.imread(data_img['coco_url'])
-#         print(I.shape)
-#         I = resize(I, (I.shape[0] // scale, I.shape[1] // scale), preserve_range=True)
-#         print(I.shape)
-#         if len(I.shape) == 2:
-#             I = skimage.color.gray2rgb(I)
-
-#         annIds = coco.getAnnIds(imgIds=img['id'], catIds=catIds ,iscrowd=False)
-#         anns = coco.loadAnns(annIds)
-#         fig , ax = plt.subplots(1,1)
-#         image = np.uint8(I)
-
-
-
-# jsonRootPath = '/home/varun/work/courses/why2learn/hw/annotations/'
-# # Input
-# input_json = os.path.join(jsonRootPath, 'instances_train2017.json')
-# class_list = ['bus','car']
-
-# ###########################
-# #Mapping from COCO label to Class indices
-# coco_labels_inverse = {}
-# coco = COCO(input_json)
-# catIds = coco.getCatIds(catNms=class_list)
-# categories = coco.loadCats(catIds)
-# categories.sort(key=lambda x: x['id'])
-# print(categories)
-
-
-#     def __getitem__(self, index):
-#         """
-#         Args:
-#             index (int): Index
-
-#         Returns:
-#             tuple: Tuple (image, target). target is the object returned by ``coco.loadAnns``.
-#         """
-#         coco = self.coco
-#         img_id = self.ids[index]
-#         ann_ids = coco.getAnnIds(imgIds=img_id)
-#         target = coco.loadAnns(ann_ids)
-
-#         path = coco.loadImgs(img_id)[0]['file_name']
-
-#         img = Image.open(os.path.join(self.root, path)).convert('RGB')
-#         if self.transform is not None:
-#             img = self.transform(img)
-
-#         if self.target_transform is not None:
-#             target = self.target_transform(target)
-
-#         return img, target
-##############################################
+def unnormalize(data,min=0.0,max=63.0):
+    return list(np.array(data)*(max-min)+min)
 
 # funciton for checking if img follows the spec 
 def checkImgAnn(path_cls, classes, cls, img, catId, anns, size):
@@ -118,18 +55,26 @@ def checkImgAnn(path_cls, classes, cls, img, catId, anns, size):
     if boxMax[2] < w/3 or boxMax[3] < h/3 or boxMax[2] > w or boxMax[3] > h:
         return False
 
+    wScale, hScale = size[0]/w, size[1]/h
+    bbox = [wScale*(boxMax[0])-1,hScale*(boxMax[1])-1,wScale*(boxMax[0]+boxMax[2])-1,hScale*(boxMax[1]+boxMax[3])-1]
+    # can improve the logic here
+    for i,coor in enumerate(bbox):
+        if coor > 63:
+            bbox[i] = 63
+        elif coor < 0:
+            bbox[i] = 0
+
     ## For valid images, return image dictionary
     imgDict = {}
-    wScale, hScale = size[0]/w, size[1]/h
     imgDict['classID'] = classes.index(cls)
     imgDict['catID'] = catId
-    imgDict['bbox'] = [wScale*boxMax[0],hScale*boxMax[1],wScale*(boxMax[0]+boxMax[2]),hScale*(boxMax[1]+boxMax[3])]
+    imgDict['bbox'] = normalize(bbox)
     imgDict['imgActual'] = imgActual.resize(size)
     return {filePath:imgDict}
 
 
 # coco - instance of COCO class -> coco = COCO(jsonPath)
-def downloadCOCO(root_path, classes, size=(128,128), coco=None, save=False):
+def downloadCOCO(root_path, classes, size=(128,128), coco=None, saveDict=False, mode="test"):
     # create a dictionary of images which can be used for training/validation
     dictImgs = {}
     # check if image folder already exists if not then create one
@@ -157,13 +102,16 @@ def downloadCOCO(root_path, classes, size=(128,128), coco=None, save=False):
                 dictImgs.update(imgDict)
     
     # save the dictionary for faster access
-    if save==True:
+    if saveDict==True and mode=="train":
         with open (os.path.join(root_path, 'dictTrain.pkl'),'wb') as file:
+            pickle.dump(dictImgs, file)
+    elif saveDict==True and mode=="test":
+        with open (os.path.join(root_path, 'dictTest.pkl'),'wb') as file:
             pickle.dump(dictImgs, file)
     return dictImgs
            
-
-
 # coco  = COCO('/home/varun/work/courses/why2learn/hw/annotations/instances_train2017.json')
+# dictImgs = downloadCOCO('/home/varun/work/courses/why2learn/hw/hw5/data',['cat','train','airplane'],(64,64),coco, True, "train")
+# coco  = COCO('/home/varun/work/courses/why2learn/hw/annotations/instances_val2017.json')
 # dictImgs = downloadCOCO('/home/varun/work/courses/why2learn/hw/hw5/data',['cat','train','airplane'],(64,64),coco, True)
 # print("The size of the dictionary is {} bytes".format(sys.getsizeof(dictImgs)))

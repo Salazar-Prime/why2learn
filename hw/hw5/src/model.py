@@ -1,3 +1,11 @@
+"""
+Homework 5: Create custom skipblock and train/test
+            modified from DLStudio
+
+Author: Varun Aggarwal
+Last Modified: 07 Mar 2022
+"""
+
 import torch
 import torch.nn as nn
 import sys
@@ -55,7 +63,7 @@ class pneumaNet(nn.Module):
 
         self.pool2x2 = nn.MaxPool2d(2, 2)
         self.reLU = nn.functional.relu
-        self.fc1 = nn.Linear(16384, 1000)
+        self.fc1 = nn.Linear(65536, 1000)
         self.fc2 = nn.Linear(1000, 5)
 
         # for regression
@@ -68,7 +76,7 @@ class pneumaNet(nn.Module):
             nn.ReLU(inplace=True),
         )
         self.fc_seqn = nn.Sequential(
-            nn.Linear(16384, 1024),
+            nn.Linear(65536, 1024),
             nn.ReLU(inplace=True),
             nn.Linear(1024, 512),
             nn.ReLU(inplace=True),
@@ -92,7 +100,7 @@ class pneumaNet(nn.Module):
         for i in range(self.depth // 2):
             x1 = self.sB64x64(x1)
         # head
-        x1 = x1.view(-1, 16384)
+        x1 = x1.view(-1, 65536)
         x1 = self.reLU(self.fc1(x1))
         x1 = self.fc2(x1)
 
