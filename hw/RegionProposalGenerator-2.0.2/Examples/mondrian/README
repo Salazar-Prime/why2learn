@@ -1,0 +1,42 @@
+
+The mondrian.jpg image yields the best results with the following
+constructor parameters:
+
+WITH IMAGE NORMALIZATION OFF:
+
+rpg = RegionProposalGenerator(
+
+               sigma = 0.8,
+               max_iterations = 40,
+               kay = 5,
+#               image_normalization_required = True,
+               image_size_reduction_factor = 4,
+               min_size_for_graph_based_blobs = 4,
+
+               color_homogeneity_thresh = [20,20,20],      
+               gray_var_thresh = 50,            
+               texture_homogeneity_thresh = 120,           
+               max_num_blobs_expected = 8
+      )
+
+
+
+
+A special challenge with the mondrian.jpg image:
+
+The mondrian image in this directory did not work for out for
+illustrating the RegionProposalGenerator module because the colors
+used by Mondrian are all very saturated.
+
+So when I convert the image into black and white, the gray level 
+associated with every pixel is close to 255, which screws up 
+the pairwise comparisons between the different regions in the
+image.
+
+THE ABOVE statement was based on using the generic "RBG" to "L"
+converter for the Image class.  
+
+HOWEVER, if I use the PyTorch's converter I get fairly acceptable
+results as shown in this directory.
+
+

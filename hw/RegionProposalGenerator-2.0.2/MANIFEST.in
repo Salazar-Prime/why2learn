@@ -1,0 +1,43 @@
+include MANIFEST.in
+include RegionProposalGenerator/RegionProposalGenerator.py
+include RegionProposalGenerator/__init__.py
+include setup.py
+include Makefile
+include README
+include RegionProposalGenerator-2.0.2.html
+include TestRegionProposalGenerator/RegionProposalGenerator.py
+include TestRegionProposalGenerator/TestImageLoadingAndDataExtraction.py
+include TestRegionProposalGenerator/TestImageConversion.py
+include TestRegionProposalGenerator/Test.py
+include TestRegionProposalGenerator/halfsun.jpg
+include Examples/README
+include Examples/single_instance_object_detection.py
+include Examples/multi_instance_object_detection.py
+include Examples/torchvision_some_basic_transformations.py
+include Examples/torchvision_based_image_processing.py
+include Examples/interactive_graph_based_segmentation.py
+include Examples/selective_search.py
+include Examples/images/polkadots.jpg
+include Examples/images/mondrian.jpg
+include Examples/images/wallpic2.jpg
+include Examples/images/rect_with_4_colors.jpg
+include Examples/images/tulip0036.jpg
+include Examples/images/broken_rectangle1.jpg
+include Examples/images/wallpic1.jpg
+include Examples/images/disk.jpg
+include Examples/images/london6.jpg
+include Examples/images/image_portion_of_polkadots.jpg
+include Examples/mondrian/selective_search.py
+include Examples/mondrian/mondrian.jpg
+include Examples/mondrian/README
+include Examples/color_blobs/selective_search.py
+include Examples/color_blobs/color_blobs.jpg
+include Examples/wallpic2/selective_search.py
+include Examples/wallpic2/wallpic2.jpg
+include Examples/mondrian/README
+
+
+
+
+
+
