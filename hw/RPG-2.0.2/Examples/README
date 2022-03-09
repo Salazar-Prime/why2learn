@@ -1,0 +1,53 @@
+For single-instance and multi-instance object detection, this
+directory contains the following script:
+
+    single_instance_detection.py
+
+    multi_instance_object_detection.py
+
+The first of these requires the following dataset:
+
+    PurdueDrEvalDataset
+
+and the second requires the dataset:
+
+    PurdueDrEvalMultiDataset
+
+The main webpage for the RegionProposalGenerator module contains
+information on how to download and install the datasets.
+
+
+===============================================================
+
+
+For graph-based algorithms for generating region proposals:
+
+The following three sub-directories contain the results obtained 
+using the RPG module:
+
+   mondrian
+
+   color_blobs
+
+   wallpic2
+
+All you have to do is to execute
+
+   selective_search.py
+
+that is already included in the respective directories.
+
+Make sure that you set the constructor parameter
+
+   image_size_reduction_factor
+
+so that the number of nodes in the initial graph does not
+exceed around 3500 in order to get the results back in a
+reasonable length of time.
+
+
+
+
+   
+
+    

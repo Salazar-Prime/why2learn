@@ -1,5 +1,6 @@
 {
     "python.analysis.extraPaths": [
         "/home/varun/work/courses/why2learn/hw/DLStudio-2.1.6"
-    ]
+    ],
+    "git.ignoreLimitWarning": true
 }
