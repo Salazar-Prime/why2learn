@@ -19,10 +19,10 @@ from io import BytesIO
 import pickle
 import torch
 
-def normalize(data,min=0.0,max=63.0):
+def normalize(data,min=0.0,max=127.0):
     return list((np.array(data) - min)/(max-min))
 
-def unnormalize(data,min=0.0,max=63.0):
+def unnormalize(data,min=0.0,max=127.0):
     return list(np.array(data)*(max-min)+min)
 
 # funciton for checking if img follows the spec 
@@ -60,7 +60,7 @@ def checkImgAnn(root_path, classes, img, catIds, anns, size, coco):
                 bbox[j] = size[0]-1
             elif coor < 0:
                 bbox[j] = 0
-        bbox = normalize(bbox,0,123)
+        # bbox = normalize(bbox,0,123)
         # save bbox and label in tensor
         bbox_tensor[i] = torch.LongTensor(bbox)
         bbox_label_tensor[i] = catIds.index(anns[i]['category_id'])
@@ -116,12 +116,11 @@ def downloadCOCO(root_path, classes, size=(128,128), coco=None, saveDict=False, 
         with open (os.path.join(root_path, 'dictTest.pkl'),'wb') as file:
             pickle.dump(dictImgs, file)
     return dictImgs
-    
-    # temp5 = [x for x in temp4 if x['category_id'] in [3,13]]
-        
+            
 # coco  = COCO('/home/varun/work/courses/why2learn/hw/annotations/instances_train2017.json')
 # dictImgs = downloadCOCO('/home/varun/work/courses/why2learn/hw/hw6/data',['car','motorcycle','stop sign'],(128,128),coco, True, "train")
 # coco  = COCO('/home/varun/work/courses/why2learn/hw/annotations/instances_val2017.json')
-# dictImgs = downloadCOCO('/home/varun/work/courses/why2learn/hw/hw5/data',['cat','train','airplane'],(64,64),coco, True)
+# dictImgs = downloadCOCO('/home/varun/work/courses/why2learn/hw/hw6/data',['car','motorcycle','stop sign'],(128,128),coco, True, "test")
 # print("The size of the dictionary is {} bytes".format(sys.getsizeof(dictImgs)))
 # [x for x in temp4 if x['category_id'] in [3,13]]
+# print()

@@ -47,7 +47,7 @@ rpg = RegionProposalGenerator(
                   yolo_interval = 20,
                   path_saved_yolo_model = "/home/varun/work/courses/why2learn/saved_yolo_model_lr-4.pt",
                   momentum = 0.9,
-                  learning_rate = 1e-4,
+                  learning_rate = 1e-5,
                   epochs = 20,
                   batch_size = 1,
                   classes = ['car','motorcycle','stop sign'],
@@ -64,9 +64,9 @@ yolo = RegionProposalGenerator.YoloLikeDetector( rpg = rpg )
 ## custom dataloader
 # prepare train dataloader
 transform = tvt.Compose([tvt.ToTensor(),tvt.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])  
-coco  = COCO('/home/varun/work/courses/why2learn/hw/annotations/instances_train2017.json')
-dataserver_train = CocoDetection(transform, rpg.dataroot_train, rpg.class_labels, rpg.image_size, coco, loadDict=True, saveDict=False, mode="train")
-yolo.train_dataloader = torch.utils.data.DataLoader(dataserver_train, batch_size=rpg.batch_size, shuffle=True, num_workers=16)
+coco  = COCO('/home/varun/work/courses/why2learn/hw/annotations/instances_val2017.json')
+dataserver_test = CocoDetection(transform, rpg.dataroot_test, rpg.class_labels, rpg.image_size, coco, loadDict=True, saveDict=False, mode="test")
+yolo.test_dataloader = torch.utils.data.DataLoader(dataserver_test, batch_size=rpg.batch_size, shuffle=True, num_workers=16)
 
 model = yolo.NetForYolo(skip_connections=True, depth=8) 
 
@@ -77,10 +77,10 @@ print("\n\nThe number of layers in the model: %d\n\n" % num_layers)
 
 # %%
 # train, test, both
-mode = "both"
+mode = "test"
 if mode=="train" or mode=="both":
     model = yolo.run_code_for_training_multi_instance_detection(model, display_images=False)
-if mode=="test" or mode=="both":
-    yolo.run_code_for_testing_multi_instance_detection(model, display_images = True)
+elif mode=="test" or mode=="both":
+    yolo.run_code_for_testing_multi_instance_detection(model, display_images = False)
 
 
