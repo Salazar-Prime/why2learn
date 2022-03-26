@@ -1,16 +1,14 @@
 #!/usr/bin/env python
 
 ##  multi_instance_object_detection.py
-# %%
 
 """
 This script is meant to be run with the PurdueDrEvalMultiDataset. Each image 
-in this dataset contains up to 5 object instances drawn from the three categories: 
+in this dataset contains at most 5 object instances drawn from three categories: 
 Dr_Eval, house, and watertower.  To each image is added background clutter that 
 consists of randomly generated shapes and 20% noise.
 """
 
-from distutils.log import debug
 import random
 import numpy
 import torch
@@ -27,7 +25,7 @@ torch.backends.cudnn.benchmarks=False
 os.environ['PYTHONHASHSEED'] = str(seed)
 
 # USER imports
-sys.path.append("/home/varun/work/courses/why2learn/hw/RPG-2.0.2")
+sys.path.append("/home/varun/work/courses/why2learn/hw/RPG-2.0.6")
 from RegionProposalGenerator import *
 
 rpg = RegionProposalGenerator(
@@ -39,11 +37,10 @@ rpg = RegionProposalGenerator(
                   momentum = 0.9,
                   learning_rate = 1e-5,
                   epochs = 20,
-                  batch_size = 4,
+                  batch_size = 1,
                   classes = ('Dr_Eval','house','watertower'),
                   use_gpu = True,
               )
-
 
 yolo = RegionProposalGenerator.YoloLikeDetector( rpg = rpg )
 
@@ -58,12 +55,10 @@ print("\n\nThe number of learnable parameters in the model: %d" % number_of_lear
 num_layers = len(list(model.parameters()))
 print("\n\nThe number of layers in the model: %d\n\n" % num_layers)
 
-# %%
 # train, test, both
 mode = "train"
 if mode=="train" or mode=="both":
     model = yolo.run_code_for_training_multi_instance_detection(model, display_images=False)
 elif mode=="test" or mode=="both":
     yolo.run_code_for_testing_multi_instance_detection(model, display_images = True)
-
 

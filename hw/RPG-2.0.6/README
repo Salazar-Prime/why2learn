@@ -1,0 +1,23 @@
+The goal of the present module is for it serve as a tool for
+experimenting with single-instance and multi-instance object
+detection and to appreciate how much more difficult the
+latter problem is.  Yes, you could directly download the
+code for, say, YOLOv3 (version 3 of YOLO) and have it do the
+right thing on your images, but that does not serve the
+purpose of education.  In order to understand in depth the
+logic used in the successful object detectors, you have no
+choice but to write your own code for at least the key
+elements of that logic.  That's what the purpose my module
+is --- to provide you with a platform for experimenting with
+the key steps of the well known object detectors.
+
+A second goal of this module related to the graph-based
+method for generating region proposals.  Toward that end,
+this module presents implementations for the Selective
+Search (SS) algorithm for object detection as proposed by
+Uijlings, van de Sande, Gevers, and Smeulders.  The
+Selective Search algorithm sits on top of the graph-based
+image segmentation algorithm of Felzenszwalb and
+Huttenlocher (FH) whose implementation is also included in
+the RPG module.
+

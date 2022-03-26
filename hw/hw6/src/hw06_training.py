@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 ##  multi_instance_object_detection.py
-# %%
 
 """
 This script is meant to be run with the PurdueDrEvalMultiDataset. Each image 
@@ -15,7 +14,13 @@ import random
 import numpy
 import torch
 import os, sys
-
+from pycocotools.coco import COCO
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision                  
+import torchvision.transforms as tvt
+import torch.optim as optim
 
 seed = 0           
 random.seed(seed)
@@ -27,20 +32,25 @@ torch.backends.cudnn.benchmarks=False
 os.environ['PYTHONHASHSEED'] = str(seed)
 
 # USER imports
-sys.path.append("/home/varun/work/courses/why2learn/hw/RPG-2.0.2")
+sys.path.append("/home/varun/work/courses/why2learn/hw/RPG-2.0.6")
 from RegionProposalGenerator import *
 
+from model import pneumaNet
+from dataloader import CocoDetection
+import utils
+
+
 rpg = RegionProposalGenerator(
-                  dataroot_train = "/home/varun/work/courses/why2learn/hw/RPG-2.0.2/Examples/data/Purdue_Dr_Eval_multi_dataset_train_10000/",
-                  dataroot_test  = "/home/varun/work/courses/why2learn/hw/RPG-2.0.2/Examples/data/Purdue_Dr_Eval_multi_dataset_test_1000/",
-                  image_size = [128,128],
+                  dataroot_train = "/home/varun/work/courses/why2learn/hw/hw6/data/",
+                  dataroot_test  = "/home/varun/work/courses/why2learn/hw/hw6/data/",
+                  image_size = [120,120],
                   yolo_interval = 20,
                   path_saved_yolo_model = "/home/varun/work/courses/why2learn/saved_yolo_model.pt",
                   momentum = 0.9,
                   learning_rate = 1e-5,
                   epochs = 20,
-                  batch_size = 4,
-                  classes = ('Dr_Eval','house','watertower'),
+                  batch_size = 1,
+                  classes = ['car','motorcycle','stop sign'],
                   use_gpu = True,
               )
 
@@ -48,8 +58,15 @@ rpg = RegionProposalGenerator(
 yolo = RegionProposalGenerator.YoloLikeDetector( rpg = rpg )
 
 ## set the dataloaders
-yolo.set_dataloaders(train=True)
-yolo.set_dataloaders(test=True)
+# yolo.set_dataloaders(train=True)
+# yolo.set_dataloaders(test=True)
+
+## custom dataloader
+# prepare train dataloader
+transform = tvt.Compose([tvt.ToTensor(),tvt.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])  
+coco  = COCO('/home/varun/work/courses/why2learn/hw/annotations/instances_train2017.json')
+dataserver_train = CocoDetection(transform, rpg.dataroot_train, rpg.class_labels, rpg.image_size, coco, loadDict=True, saveDict=False, mode="train")
+yolo.train_dataloader = torch.utils.data.DataLoader(dataserver_train, batch_size=rpg.batch_size, shuffle=True, num_workers=16)
 
 model = yolo.NetForYolo(skip_connections=True, depth=8) 
 

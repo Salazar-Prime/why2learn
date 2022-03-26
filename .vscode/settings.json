@@ -1,6 +1,7 @@
 {
     "python.analysis.extraPaths": [
-        "/home/varun/work/courses/why2learn/hw/DLStudio-2.1.6"
+        "/home/varun/work/courses/why2learn/hw/DLStudio-2.1.6",
+        "/home/varun/work/courses/why2learn/hw/RPG-2.0.6"
     ],
     "git.ignoreLimitWarning": true
 }

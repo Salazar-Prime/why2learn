@@ -1,8 +1,8 @@
-__version__   = '2.0.2'
+__version__   = '2.0.6'
 __author__    = "Avinash Kak (kak@purdue.edu)"
-__date__      = '2021-April-7'   
-__url__       = 'https://engineering.purdue.edu/kak/distRPG/RegionProposalGenerator-2.0.2.html'
-__copyright__ = "(C) 2021 Avinash Kak. Python Software Foundation."
+__date__      = '2022-March-21'   
+__url__       = 'https://engineering.purdue.edu/kak/distRPG/RegionProposalGenerator-2.0.6.html'
+__copyright__ = "(C) 2022 Avinash Kak. Python Software Foundation."
 
 __doc__ = '''
 
@@ -18,6 +18,25 @@ Date: ''' + __date__ + '''
 @title
 CHANGE LOG:
 
+  Version 2.0.6:
+
+    This version incorporates a more sophisticated loss function for
+    YOLO-based multi-instance object detection in images.  In the new loss
+    function, I use different criteria for the different segments of the YOLO
+    vector.  [Assigning an object instance in a training image to an anchor
+    box for a cell in the image involves creating a "5+C"-element YOLO vector,
+    where C is the number of object classes.] I now use the Binary
+    Cross-Entropy Loss (nn.BCELoss) for the first element of the YOLO vector
+    that stands for the presence or the absence of an object instance in a
+    specific anchor box in a specific cell.  I use mean-squared-error loss
+    (nn.MSELoss) for the next four numerical elements that express the precise
+    location of the object bounding-box vis-a-vis the center of the cell to
+    which the object is assigned and also for the dimensions of the bounding
+    box.  Finally, I use the regular Cross-Entropy loss (nn.CrossEntropyLoss)
+    for the last C elements of the YOLO vector.  Using the cross-entropy loss
+    for the labeling errors required augmenting the YOLO vector with one
+    additional element to express the absence of an object.
+
   Version 2.0.2:
 
     This version fixes a couple of bugs in the YOLO-based logic for
@@ -25,29 +44,29 @@ CHANGE LOG:
 
   Version 2.0.1:
 
-    This module has gone through several changes since its last
-    public-release version as I was experimenting with different ways of
-    imparting to the students the sudden increase in model complexity as
-    one goes from single-instance object detection to multi-instance object
-    detection.  These experiments led to the creation of two new datasets,
-    PurdueDrEvalDataset and PurdueDrEvalMultiDataset, the former for
-    playing with single-instance object detection and the latter for doing
-    the same with multi-instance object detection.  The module also
-    includes two inner classes, SingleInstanceDetector and
-    YoloLikeDetector, the former a reference implementation for single
-    instance object detection and the latter a YOLO-like reference
-    implementation for multi-instance object detection. [By the way,
-    "DrEval" in the names of the two datasets mentioned here has a
-    connection with "Dr Evil" in the Austin Powers movies.]
+    This module has gone through several changes since its last public-release
+    version as I was experimenting with different ways of imparting to the
+    students the sudden increase in model complexity as one goes from
+    single-instance object detection to multi-instance object detection.
+    These experiments led to the creation of two new datasets,
+    PurdueDrEvalDataset and PurdueDrEvalMultiDataset, the former for playing
+    with single-instance object detection and the latter for doing the same
+    with multi-instance object detection.  The module also includes two inner
+    classes, SingleInstanceDetector and YoloLikeDetector, the former a
+    reference implementation for single instance object detection and the
+    latter a YOLO-like reference implementation for multi-instance object
+    detection. [By the way, "DrEval" in the names of the two datasets
+    mentioned here has a connection with "Dr Evil" in the Austin Powers
+    movies.]
 
   Version 1.0.5:
 
-    In keeping with the tutorial nature of this module, this version
-    includes methods that come in handy for batch-based processing of
-    images. These methods carry names like "displaying_and_histogramming_
+    In keeping with the tutorial nature of this module, this version includes
+    methods that come in handy for batch-based processing of images. These
+    methods carry names like "displaying_and_histogramming_
     images_in_batchX()" where X is 1, 2, and 3.  The rest of the module,
-    especially the part that deals with constructing region proposals
-    remains unchanged.
+    especially the part that deals with constructing region proposals remains
+    unchanged.
 
   Version 1.0.4:
 
@@ -76,7 +95,7 @@ INTRODUCTION:
 
     The last half-dozen years have seen the emergence of the following
     three competition-grade neural-network based approaches for
-    multi-instance object detection: R-CNN, YOLO, and SSD.  My Week 9
+    multi-instance object detection: R-CNN, YOLO, and SSD.  My Week 8
     lecture material for Purdue's Deep Learning class provides a brief
     overview of these approaches.
 
@@ -341,7 +360,7 @@ Inner Classes:
          dataset contains one of these objects after it is randomly scaled
          and colored. Each image also contains substantial structured noise
          in addition to 20% Gaussian noise.  Examples of these images are
-         shown in the Week 9 lecture material in Purdue's Deep Learning
+         shown in the Week 8 lecture material in Purdue's Deep Learning
          class.
 
     (2)  PurdueDrEvalMultiDataset
@@ -679,7 +698,7 @@ COPYRIGHT:
 
     Python Software Foundation License
 
-    Copyright 2021 Avinash Kak
+    Copyright 2022 Avinash Kak
 
 @endofdocs
 '''
@@ -876,7 +895,7 @@ class RegionProposalGenerator(object):
         if 'min_size_for_graph_based_blobs' in kwargs :  min_size_for_graph_based_blobs = kwargs.pop('min_size_for_graph_based_blobs')
         if 'max_num_blobs_expected' in kwargs        :  max_num_blobs_expected = kwargs.pop('max_num_blobs_expected')
         if 'debug' in kwargs                         :   debug = kwargs.pop('debug') 
-        if len(kwargs) != 0: raise ValueError('''You have provided unrecognizable keyword args''')
+#        if len(kwargs) != 0: raise ValueError('''You have provided unrecognizable keyword args''')
         if dataroot_train:
             self.dataroot_train = dataroot_train
         if dataroot_test:
@@ -971,7 +990,7 @@ class RegionProposalGenerator(object):
         Dr. Eval, and two "objects" in his neighborhood: a house and a watertower.
         Each 128x128 image in the dataset contains one of these objects after it is
         randomly scaled and colored and substantial structured noise in addition to
-        20% Gaussian noise.  Examples of these images are shown in Week 9 lecture
+        20% Gaussian noise.  Examples of these images are shown in Week 8 lecture
         material in Purdue's Deep Learning class.
 
         In order to understand the implementation of the dataloader for the Dr Eval
@@ -1156,7 +1175,7 @@ class RegionProposalGenerator(object):
         clutter is added to the images --- these are again randomly chosen
         shapes. The number of clutter objects is also chosen randomly but cannot
         exceed 10.  In addition to the structured clutter, I add 20% Gaussian noise
-        to each image.  Examples of these images are shown in Week 9 lecture material
+        to each image.  Examples of these images are shown in Week 8 lecture material
         in Purdue's Deep Learning class.
 
         On account of the much richer structure of the image annotations, this
@@ -1440,7 +1459,6 @@ class RegionProposalGenerator(object):
                                                                     downsample=True, skip_connections=skip_connections)
                 self.fc1 =  nn.Linear(8192, 1000)
                 self.fc2 =  nn.Linear(1000, 3)
-                ##  the rest of this __init__() is for regression
                 self.conv_seqn = nn.Sequential(
                     nn.Conv2d(in_channels=64, out_channels=256, kernel_size=3, padding=1),
                     nn.BatchNorm2d(256),
@@ -1691,62 +1709,46 @@ class RegionProposalGenerator(object):
 
     ###%%%
     #######################################################################################################
+    ##########################        A class for multi instance detection        #########################
     ##########################  Start Definition of Inner Class YoloLikeDetector  #########################
 
     class YoloLikeDetector(nn.Module):             
         """
-        The primary purpose of this class is to demonstrate multi-instance object 
-        detection with YOLO-like logic.  Toward that end, the following method
-        of this class:
+        The primary purpose of this class is to demonstrate multi-instance object detection with YOLO-like 
+        logic.  A key parameter of the logic for YOLO-like detection is the variable 'yolo_interval'.  
+        The image gridding that is required is based on the value assigned to this variable.  The grid is 
+        represented by an SxS array of cells where S is the image width divided by yolo_interval. So for
+        images of size 128x128 and 'yolo_interval=20', you will get a 6x6 grid of cells over the image. Since
+        my goal is merely to explain the principles of the YOLO logic, I have not bothered with the bottom
+        8 rows and the right-most 8 columns of the image that get left out of the area covered by such a grid.
 
-            run_code_for_training_multi_instance_detection()
+        An important element of the YOLO logic is defining a set of Anchor Boxes for each cell in the SxS 
+        grid.  The anchor boxes are characterized by their aspect ratios.  By aspect ratio I mean the
+        'height/width' characterization of the boxes.  My implementation provides for 5 anchor boxes for 
+        each cell with the following aspect ratios: 1/5, 1/3, 1/1, 3/1, 5/1.  
 
-        shows code based on my understanding of how YOLO works for multi-instance
-        object detection.  A key parameter of the logic I have presented is in the
-        form the variable 'yolo_interval'.  The image gridding that is required is
-        based on the value assigned to this variable.  The grid is represented by an
-        SxS array of cells where S is the image width divided by yolo_interval. So if
-        'yolo_interval=20', you will get a 6x6 grid of cells over the image. [In the
-        current version 0 of the implementation, I have not bothered with the bottom
-        8 rows and the right-most 8 columns of the image that get left out of the
-        area covered by such a grid.]
+        At training time, each instance in the image is assigned to that cell whose central pixel is 
+        closest to the center of the bounding box for the instance. After the cell assignment, the 
+        instance is assigned to that anchor box whose aspect ratio comes closest to matching the aspect 
+        ratio of the instance.
 
-        Perhaps the most important element of the YOLO logic is defining a set of
-        Anchor Boxes for each cell in the SxS grid.  The anchor boxes are
-        characterized by their aspect ratios.  By aspect ratio I mean the
-        'height/width' characterization of the boxes.  My implementation provides for
-        5 anchor boxes for each cell with the following aspect ratios: 1/5, 1/3, 1/1,
-        3/1, 5/1.  
+        The assigning of an object instance to a <cell, anchor_box> pair is encoded in the form of a 
+        '5+C' element long YOLO vector where C is the number of classes for the object instances.  
+        In our cases, C is 3 for the three classes 'Dr_Eval', 'house' and 'watertower', therefore we 
+        end up with an 8-element vector encoding when we assign an instance to a <cell, anchor_box> 
+        pair.  The last C elements of the encoding vector can be thought as a one-hot representation 
+        of the class label for the instance.
 
-        At training time, each instance in the image is assigned to that cell whose
-        central pixel is closest to the center of the bounding box for the instance.
-        After the cell assignment, the instance is assigned to that anchor box whose
-        aspect ratio comes closest to matching the aspect ratio of the instance.
+        The first five elements of the vector encoding for each anchor box in a cell are set as follows: 
+        The first element is set to 1 if an object instance was actually assigned to that anchor box. 
+        The next two elements are the (x,y) displacements of the center of the actual bounding box 
+        for the object instance vis-a-vis the center of the cell. These two displacements are expressed 
+        as a fraction of the width and the height of the cell.  The next two elements of the YOLO vector
+        are the actual height and the actual width of the true bounding box for the instance in question 
+        as a multiple of the cell dimension.
 
-        The assigning of an object instance to a <cell, anchor_box> pair is encoded
-        in the form of a '5+C' element long vector where C is the number of classes
-        for the object instances.  In our cases, C is 3 for the three classes
-        'Dr_Eval', 'house' and 'watertower', there we end up with an 8-element vector
-        encoding when we assign an instance to a <cell, anchor_box> pair.  The last C
-        elements of the encoding vector can be thought as a one-hot representation of
-        the class label for the instance.
-
-        The first five elements of the vector encoding for each anchor box in a cell
-        are set as follows: The first element is 1 if an object instance was actually
-        assigned to that anchor box. The next two elements are the (x,y)
-        displacements of the center of the actual bounding box for the instance
-        vis-a-vis the center of the cell. These two displacements are expressed as a
-        fraction of the width and the height of the cell.  The next two elements of
-        the vector encoding are the actual height and the actual width of the true
-        bounding box for the instance in question as a multiple of the cell
-        dimension.
-
-        The 8-element vectors for each of the anchor boxes for all the cells in the
-        SxS grid are concatenated together to form a large vector for regression.
-        Since S is 6 in the implementation shown and we have 5 anchor boxes for each
-        cell of the grid, we end up with a 1440 element tensor representation for
-        each training image.
-
+        The 8-element YOLO vectors are packed into a YOLO tensor of shape (num_cells, num_anch_boxes, 8)
+        where num_cell is 36 for a 6x6 gridding of an image, num_anch_boxes is 5.
         """
         def __init__(self, rpg):
             super(RegionProposalGenerator.YoloLikeDetector, self).__init__()
@@ -1901,13 +1903,25 @@ class RegionProposalGenerator(object):
 
         class NetForYolo(nn.Module):
             """
-            The YOLO approach to multi-instance detection is based entirely on regression.  As
-            was mentioned earlier in the comment block associated with the enclosing
-            class, each image is represented by a 1440 element tensor that consists
-            of 8-element encodings for each anchor box for every cell in the SxS
-            gridding of an image.  The network I show below is a modification of the
-            network class LOADnet presented earlier for the case that all we want to
-            do is regression.
+            Recall that each YOLO vector is of size 5+C where C is the number of classes.  Since C
+            equals 3 for the dataset used in the demo code in the Examples directory, our YOLO vectors
+            are 8 elements long.  A YOLO tensor is a tensor representation of all the YOLO vectors
+            created for a given training image.  The network shown below assumes that the input to
+            the network is a flattened form of the YOLO tensor.  With an 8-element YOLO vector, a
+            6x6 gridding of an image, and with 5 anchor boxes for each cell of the grid, the 
+            flattened version of the YOLO tensor would be of size 1440.
+
+            In Version 2.0.6 of the RPG module, I introduced a new loss function for this network
+            that calls for using nn.CrossEntropyLoss for just the last C elements of each YOLO
+            vector. [See Lines 64 through 83 of the code for "run_code_for_training_multi_instance_
+            detection()" for how the loss is calculated in 2.0.6.]  Using nn.CrossEntropyLoss 
+            required augmenting the last C elements of the YOLO vector with one additional 
+            element for the purpose of representing the absence of an object in any given anchor
+            box of a cell.  
+
+            With the above mentioned augmentation, the flattened version of a YOLO tensor is
+            of size 1620.  That is the reason for the one line change at the end of the 
+            constructor initialization code shown below.
             """ 
             def __init__(self, skip_connections=True, depth=8):
                 super(RegionProposalGenerator.YoloLikeDetector.NetForYolo, self).__init__()
@@ -1947,7 +1961,8 @@ class RegionProposalGenerator(object):
                     nn.ReLU(inplace=True),
                     nn.Linear(4096, 2048),
                     nn.ReLU(inplace=True),
-                    nn.Linear(2048, 1440)
+#                    nn.Linear(2048, 1440)
+                    nn.Linear(2048, 1620)
                 )
 
             def forward(self, x):
@@ -1968,63 +1983,107 @@ class RegionProposalGenerator(object):
                 x = self.fc_seqn(x)
                 return x
 
+        class AnchorBox( nn.Module ):
+            """
+            About the role of the 'adx' constructor parameter:  Recall that our goal is to use
+            the annotations for each batch to fill up the 'yolo_tensor' that was defined above.
+            For case of 5 anchor boxes per cell, this tensor has the following shape:
+
+                     torch.zeros( self.rpg.batch_size, num_yolo_cells, 5, 8 )
+
+            The index 'adx' shown below tells us which of the 5 dimensions on the third axis
+            of the 'yolo_tensor' be RESERVED for an anchor box.  We will reserve the 
+            coordinate 0 on the third axis for the "1/1" anchor boxes, the coordinate 1 for
+            the "1/3" anchor boxes, and so on.  This coordinate choice is set by 'adx'. 
+            """
+            #               aspect_ratio top_left_corner  anchor_box height & width   anchor_box index
+            def __init__(self,   AR,     tlc,             ab_height,   ab_width,      adx):     
+                super(RegionProposalGenerator.YoloLikeDetector.AnchorBox, self).__init__()
+                self.AR = AR
+                self.tlc = tlc
+                self.ab_height = ab_height
+                self.ab_width = ab_width
+                self.adx = adx
+            def __str__(self):
+                return "AnchorBox type (h/w): %s    tlc for yolo cell: %s    anchor-box height: %d     \
+                   anchor-box width: %d   adx: %d" % (self.AR, str(self.tlc), self.ab_height, self.ab_width, self.adx)
+
     
-        def run_code_for_training_multi_instance_detection(self, net, display_images=False):        
-            yolo_debug = True
-            filename_for_out1 = "performance_numbers_" + str(self.rpg.epochs) + "label.txt"
-            filename_for_out2 = "performance_numbers_" + str(self.rpg.epochs) + "regres.txt"
-            FILE1 = open(filename_for_out1, 'w')
-            FILE2 = open(filename_for_out2, 'w')
-            net = copy.deepcopy(net)
-            net = net.to(self.rpg.device)
-            criterion1 = nn.CrossEntropyLoss()
-            criterion2 = nn.MSELoss()
-            optimizer = optim.SGD(net.parameters(), lr=self.rpg.learning_rate, momentum=self.rpg.momentum)
+        def run_code_for_training_multi_instance_detection(self, net, display_labels=False, display_images=False):        
+            """
+            Version 2.0.6 introduced a loss function that respects the semantics of the different elements 
+            of the YOLO vector.  Recall that when you assign an object bounding box to an anchor-box in a 
+            specific cell of the grid over the images, you create a 5+C element YOLO vector where C is 
+            the number of object classes in your dataset.  Since C=3 in our case, the YOLO vectors in our 
+            case are 8-element vectors. See Slide 36 of the Week 8 slides for the meaning to be associated 
+            with the different elements of a YOLO vector.
+
+            Lines 64 through 83 in the code shown below are the implementation of the new loss function.
+
+            Since the first element of the YOLO vector is to indicate the presence or the absence of object 
+            in a specific anchor-box in a specific cell, I use nn.BCELoss for that purpose.  The next four 
+            elements carry purely numerical values that indicate the precise location of the object 
+            vis-a-vis the center of the cell to which the object is assigned and also the precise height 
+            and the width of the object bounding-box, I use nn.MSELoss for these four elements. The last 
+            three elements are a one-hot representation of the object class label, so I use the regular 
+            nn.CrossEntropyLoss for these elements.
+
+            As I started writing code for incorporating the nn.CrossEntropyLoss mentioned above, I realized
+            that (for purpose of loss calculation) I needed to append one more element to the last three 
+            class-label elements of the YOLO vector to take care of the case when there is no object 
+            instance present in an anchor box.  You see, the dataset assumes that an image can have a 
+            maximum of 5 objects. If an image has fewer than 5 objects, that fact is expressed in the 
+            annotations by using the label value of 13 for the 'missing' objects.  To illustrate, say a
+            training image has just two objects in it, one being Dr. Eval and the other a house. In this
+            case, the annotation for the class labels would be the list [0,1,13,13,13].  If I had not 
+            augmented the YOLO vector for loss calculation, the network would be forced to choose
+            one of the actual class labels --- 0, 1, or 2 --- in the prediction for a YOLO vector even 
+            when there was no object present in the training image for that cell and that anchor box. So 
+            when the object label is 13, I throw all the probability mass related to class labels into the 
+            additional element (the 9th element) for a YOLO vector.
+
+            See Lines 57 through 60 for the above-mentioned augmentation of the YOLO vectors for all the
+            anchor boxes in all of the cells of the grid.
+
+            An important consequence of augmenting the YOLO vectors in the manner explained above is that 
+            you must factor the augmentations in the processing of the predictions made by the network.
+            An example of that is shown in Line 91 where we supply 9 as the size of the vectors that
+            need to be recovered from the predictions.
+            """
+            # if self.rpg.batch_size > 1:                                                                                    ## (1)
+            #     sys.exit("YOLO-like multi-instance object detection has only been tested for batch_size of 1")             ## (2)
+            yolo_debug = False
+            filename_for_out1 = "performance_numbers_" + str(self.rpg.epochs) + "label.txt"                                
+            filename_for_out2 = "performance_numbers_" + str(self.rpg.epochs) + "regres.txt"                               
+            FILE1 = open(filename_for_out1, 'w')                                                                           
+            FILE2 = open(filename_for_out2, 'w')                                                                           
+            net = net.to(self.rpg.device)                                                                                  
+            criterion1 = nn.BCELoss()                    # For the first element of the 8 element yolo vector              ## (3)
+            criterion2 = nn.MSELoss()                    # For the regiression elements (indexed 2,3,4,5) of yolo vector   ## (4)
+            criterion3 = nn.CrossEntropyLoss()           # For the last three elements of the 8 element yolo vector        ## (5)
+            print("\n\nLearning Rate: ", self.rpg.learning_rate)
+            optimizer = optim.SGD(net.parameters(), lr=self.rpg.learning_rate, momentum=self.rpg.momentum)                 ## (6)
             print("\n\nStarting training loop...\n\n")
             start_time = time.perf_counter()
             Loss_tally = []
             elapsed_time = 0.0
-            yolo_interval = self.rpg.yolo_interval
-            num_yolo_cells = (self.rpg.image_size[0] // yolo_interval) * (self.rpg.image_size[1] // yolo_interval)
-            num_anchor_boxes =  5    # (height/width)   1/5  1/3  1/1  3/1  5/1
-            #  The 8 in the following is the size of the yolo_vector for each
-            #  anchor-box in a given cell.  The 8 elements are: [obj_present, bx, by,
-            #  bh, bw, c1, c2, c3] where bx and by are the delta diffs between the centers
-            #  of the yolo cell and the center of the object bounding box in terms of
-            #  a unit for the cell width and cell height.  bh and bw are the height 
-            #  and the width of object bounding box in terms of the cell height and width.
-            yolo_tensor = torch.zeros( self.rpg.batch_size, num_yolo_cells, num_anchor_boxes, 8 )
-
-            class AnchorBox:
-                """
-                About the role of the 'adx' constructor parameter:  Recall that our goal is to use
-                the annotations for each batch to fill up the 'yolo_tensor' that was defined above.
-                For case of 5 anchor boxes per cell, this tensor has the following shape:
-
-                         torch.zeros( self.rpg.batch_size, num_yolo_cells, 5, 8 )
-
-                The index 'adx' shown below tells us which of the 5 dimensions on the third axis
-                of the 'yolo_tensor' be RESERVED for an anchor box.  We will reserve the 
-                coordinate 0 on the third axis for the "1/1" anchor boxes, the coordinate 1 for
-                the "1/3" anchor boxes, and so on.  This coordinate choice is set by 'adx'. 
-                """
-                #               aspect_ratio top_left_corner  anchor_box height & width   anchor_box index
-                def __init__(self,   AR,     tlc,             ab_height,   ab_width,      adx):     
-                    self.AR = AR
-                    self.tlc = tlc
-                    self.ab_height = ab_height
-                    self.ab_width = ab_width
-                    self.adx = adx
-                def __str__(self):
-                    return "AnchorBox type (h/w): %s    tlc for yolo cell: %s    anchor-box height: %d     \
-                       anchor-box width: %d   adx: %d" % (self.AR, str(self.tlc), self.ab_height, self.ab_width, self.adx)
-
-            for epoch in range(self.rpg.epochs):  
+            yolo_interval = self.rpg.yolo_interval                                                                         ## (7)
+            num_yolo_cells = (self.rpg.image_size[0] // yolo_interval) * (self.rpg.image_size[1] // yolo_interval)         ## (8)
+            num_anchor_boxes =  5    # (height/width)   1/5  1/3  1/1  3/1  5/1                                            ## (9)
+            max_obj_num  = 5                                                                                               ## (10)
+            ## The 8 in the following is the size of the yolo_vector for each anchor-box in a given cell.  The 8 elements 
+            ## are: [obj_present, bx, by, bh, bw, c1, c2, c3] where bx and by are the delta diffs between the centers
+            ## of the yolo cell and the center of the object bounding box in terms of a unit for the cell width and cell 
+            ## height.  bh and bw are the height and the width of object bounding box in terms of the cell height and width.
+            for epoch in range(self.rpg.epochs):                                                                           ## (11)
                 print("")
-                running_loss = 0.0
+                running_loss = 0.0                                                                                         ## (12)
                 for iter, data in enumerate(self.train_dataloader):   
-                    im_tensor, seg_mask_tensor, bbox_tensor, bbox_label_tensor, num_objects_in_image = data
-                    im_tensor   = im_tensor.to(self.rpg.device)
+                    if yolo_debug:
+                        print("\n\n\n======================================= iteration: %d ========================================\n" % iter)
+                    yolo_tensor = torch.zeros( self.rpg.batch_size, num_yolo_cells, num_anchor_boxes, 8 )                  ## (13)
+                    im_tensor, seg_mask_tensor, bbox_tensor, bbox_label_tensor, num_objects_in_image = data                ## (14)
+                    im_tensor   = im_tensor.to(self.rpg.device)                                                            ## (15)
                     seg_mask_tensor = seg_mask_tensor.to(self.rpg.device)                 
                     bbox_tensor = bbox_tensor.to(self.rpg.device)
                     bbox_label_tensor = bbox_label_tensor.to(self.rpg.device)
@@ -2034,109 +2093,89 @@ class RegionProposalGenerator(object):
                         old_level = logger.level
                         logger.setLevel(100)
                         plt.figure(figsize=[15,4])
-                        plt.imshow(np.transpose(torchvision.utils.make_grid(im_tensor, normalize=True,
-                                                                         padding=3, pad_value=255).cpu(), (1,2,0)))
+                        plt.imshow(np.transpose(torchvision.utils.make_grid(im_tensor,normalize=True,padding=3,pad_value=255).cpu(), (1,2,0)))
                         plt.show()
                         logger.setLevel(old_level)
-                    cell_height = yolo_interval
-                    cell_width = yolo_interval
-                    obj_centers = {ibx : {idx : None for idx in range(num_objects_in_image[ibx])} 
-                                                                       for ibx in range(im_tensor.shape[0])}
-                    ##  2D indexing for access to the anchor boxes is implicit:
-                    ##  ALSO:  Aspect Ratio (AR) is the ratio of the height to the width of a bounding box
-                    ##         Therefore, in the name "anchor_boxes_1_3", AR is 1/3 when height/width = 1/3
-                    num_cells_image_width = self.rpg.image_size[0] // yolo_interval
-                    num_cells_image_height = self.rpg.image_size[1] // yolo_interval
-                    ## The pair in the second arg to the AnchorBox constructor are the pixel coordinates of the
-                    ## top-left corner of the yolo cell in question.
+                    cell_height = yolo_interval                                                                            ## (16)
+                    cell_width = yolo_interval                                                                             ## (17)
+                    if yolo_debug:
+                        print("\n\nnum_objects_in_image: ")
+                        print(num_objects_in_image)
+                    num_cells_image_width = self.rpg.image_size[0] // yolo_interval                                        ## (18)
+                    num_cells_image_height = self.rpg.image_size[1] // yolo_interval                                       ## (19)
+                    height_center_bb = torch.zeros(im_tensor.shape[0], 1).float().to(self.rpg.device)                      ## (20)
+                    width_center_bb = torch.zeros(im_tensor.shape[0], 1).float().to(self.rpg.device)                       ## (21)
+                    obj_bb_height = torch.zeros(im_tensor.shape[0], 1).float().to(self.rpg.device)                         ## (22)
+                    obj_bb_width =  torch.zeros(im_tensor.shape[0], 1).float().to(self.rpg.device)                         ## (23)
 
-                    anchor_boxes_1_1 = [[AnchorBox("1/1", (i*yolo_interval,j*yolo_interval), yolo_interval, yolo_interval,  0) 
-                                                                        for i in range(0,num_cells_image_height)]
-                                                                           for j in range(0,num_cells_image_width)]
-                    anchor_boxes_1_3 = [[AnchorBox("1/3",(i*yolo_interval,j*yolo_interval), yolo_interval, 3*yolo_interval, 1) 
-                                                                        for i in range(0,num_cells_image_height)]
-                                                                           for j in range(0,num_cells_image_width)]
-                    anchor_boxes_3_1 = [[AnchorBox("3/1",(i*yolo_interval,j*yolo_interval), 3*yolo_interval, yolo_interval, 2)
-                                                                        for i in range(0,num_cells_image_height)]
-                                                                           for j in range(0,num_cells_image_width)]
-                    anchor_boxes_1_5 = [[AnchorBox("1/5",(i*yolo_interval,j*yolo_interval), yolo_interval, 5*yolo_interval, 3)
-                                                                        for i in range(0,num_cells_image_height)]
-                                                                           for j in range(0,num_cells_image_width)]
-                    anchor_boxes_5_1 = [[AnchorBox("5/1",(i*yolo_interval,j*yolo_interval), 5*yolo_interval, yolo_interval, 4) 
-                                                                        for i in range(0,num_cells_image_height)]
-                                                                           for j in range(0,num_cells_image_width)]
-                    for ibx in range(im_tensor.shape[0]):
-                        for idx in range(num_objects_in_image[ibx]):
-                            ## Note that the bounding-box coordinates are in the (x,y) format, with x-positive going to
-                            ## right and the y-positive going down. A bbox is specified by (x_min,y_min,x_max,y_max):
+                    ## idx is for object index
+                    for idx in range(max_obj_num):                                                                         ## (24)
+                        ## In the mask, 1 means good image instance in batch, 0 means bad image instance in batch
+#                        batch_mask = torch.ones( self.rpg.batch_size, dtype=torch.int8).to(self.rpg.device)
+                        if yolo_debug:
+                            print("\n\n               ================  object indexed %d ===============              \n\n" % idx)
+                        ## Note that the bounding-box coordinates are in the (x,y) format, with x-positive going to
+                        ## right and the y-positive going down. A bbox is specified by (x_min,y_min,x_max,y_max):
+                        if yolo_debug:
+                            print("\n\nshape of bbox_tensor: ", bbox_tensor.shape)
+                            print("\n\nbbox_tensor:")
+                            print(bbox_tensor)
+                        ## in what follows, the first index (set to 0) is for the batch axis
+                        height_center_bb =  (bbox_tensor[0,idx,1] + bbox_tensor[0,idx,3]) // 2                             ## (25)
+                        width_center_bb =  (bbox_tensor[0,idx,0] + bbox_tensor[0,idx,2]) // 2                              ## (26)
+                        obj_bb_height = bbox_tensor[0,idx,3] -  bbox_tensor[0,idx,1]                                       ## (27)
+                        obj_bb_width = bbox_tensor[0,idx,2] - bbox_tensor[0,idx,0]                                         ## (28)
+                        if (obj_bb_height < 4.0) or (obj_bb_width < 4.0): continue                                         ## (29)
 
-                            height_center_bb =  (bbox_tensor[ibx][idx][1].item() + bbox_tensor[ibx][idx][3].item()) // 2
-                            width_center_bb =  (bbox_tensor[ibx][idx][0].item() + bbox_tensor[ibx][idx][2].item()) // 2
-                            obj_bb_height = bbox_tensor[ibx][idx][3].item() -  bbox_tensor[ibx][idx][1].item()
-                            obj_bb_width = bbox_tensor[ibx][idx][2].item() - bbox_tensor[ibx][idx][0].item()
+                        cell_row_indx =  (height_center_bb / yolo_interval).int()          ## for the i coordinate         ## (30)
+                        cell_col_indx =  (width_center_bb / yolo_interval).int()           ## for the j coordinates        ## (31)
+                        cell_row_indx = torch.clamp(cell_row_indx, max=num_cells_image_height - 1)                         ## (32)
+                        cell_col_indx = torch.clamp(cell_col_indx, max=num_cells_image_width - 1)                          ## (33)
 
-                            label = self.rpg.class_labels[bbox_label_tensor[ibx][idx].item()]
-                            if (obj_bb_height < 4) or (obj_bb_width < 4):
-                                continue
-                            AR = float(obj_bb_height) / float(obj_bb_width)
-                            if yolo_debug:
-                                print("\n\n[Image ibx: %d  object: %d]   obj label: %s   obj_bb_height: %d    obj_bb_width: %d" % 
-                                                                           (ibx, idx, label, obj_bb_height, obj_bb_width))
-                            ## The following cell_row_idx and cell_col_idx are in the (i,j) format with i being the row
-                            ## index for a pixel in the image and j being the column index.  The variables
-                            ## cell_row_idx and cell_col_idx refer to index of the cell to be used in the yolo_interval
-                            ## based gridding of the image.  The anchor boxes are centered at the centers of the grid cells:
+                        ## The bh and bw elements in the yolo vector for this object:  bh and bw are measured relative 
+                        ## to the size of the grid cell to which the object is assigned.  For example, bh is the 
+                        ## height of the bounding-box divided by the actual height of the grid cell.
+                        bh  =  obj_bb_height.float() / yolo_interval                                                       ## (34)
+                        bw  =  obj_bb_width.float()  / yolo_interval                                                       ## (35)
 
-                            cell_row_idx =  height_center_bb // yolo_interval          ## for the i coordinate
-                            cell_col_idx = width_center_bb // yolo_interval            ## for the j coordinates
-                            cell_row_idx = 5 if cell_row_idx > 5 else cell_row_idx
-                            cell_col_idx = 5 if cell_col_idx > 5 else cell_col_idx
-
-                            if AR <= 0.2:
-                                anchbox = anchor_boxes_1_5[cell_row_idx][cell_col_idx]
-                            elif AR <= 0.5:
-                                anchbox = anchor_boxes_1_3[cell_row_idx][cell_col_idx]
-                            elif AR <= 1.5:
-                                anchbox = anchor_boxes_1_1[cell_row_idx][cell_col_idx]
-                            elif AR <= 4:
-                                anchbox = anchor_boxes_3_1[cell_row_idx][cell_col_idx]
-                            elif AR > 4:
-                                anchbox = anchor_boxes_5_1[cell_row_idx][cell_col_idx]
-
-                            if yolo_debug:
-                                print("iter=%d  cell_row_idx: " % iter, cell_row_idx)
-                                print("iter=%d  cell_col_idx: " % iter, cell_col_idx)
-                                print("iter=%d  Anchor box used for image: %d and object: %d: " % (iter, ibx,idx), anchbox)
-                            # The bh and bw elements in the yolo vector for this object:
-                            # bh and bw are measured relative to the size of the grid cell to which the object is
-                            # assigned.  For example, bh is the height of the bounding-box divided by the actual
-                            # heigh of the grid cell.
-                            bh  =  float(obj_bb_height) / float(yolo_interval)
-                            bw  =  float(obj_bb_width)  / float(yolo_interval)
-                            # You have to be CAREFUL about object center calculation since bounding-box coordinates
-                            # are in (x,y) format --- with x-positive going to the right and y-positive going down.
-                            obj_center_x =  float(bbox_tensor[ibx][idx][2].item() +  bbox_tensor[ibx][idx][0].item()) / 2.0
-                            obj_center_y =  float(bbox_tensor[ibx][idx][3].item() + bbox_tensor[ibx][idx][1].item()) / 2.0
-
-                            # Now you need to switch back from (x,y) format to (i,j) format:
-                            yolocell_center_i =  cell_row_idx*yolo_interval + float(yolo_interval) / 2.0
-                            yolocell_center_j =  cell_col_idx*yolo_interval + float(yolo_interval) / 2.0
-                            if yolo_debug:
-                                print("object center located at: obj_center_x: %.3f    obj_center_y: %0.3f" % 
-                                                                                          (obj_center_x, obj_center_y))
-                                print("yolocell center located at: yolocell_center_j: %.3f   yolocell_center_i: %0.3f" % 
-                                                                                (yolocell_center_j, yolocell_center_i))
-                            del_x = float(obj_center_x - yolocell_center_j) / yolo_interval
-                            del_y = float(obj_center_y - yolocell_center_i) / yolo_interval
-                            yolo_vector = [1, del_x, del_y, bh, bw, 0, 0, 0]
-                            yolo_vector[5 + bbox_label_tensor[ibx][idx].item()] = 1
-                            ## Remember because the coordinate reversal between (x,y) and (i,j) formats, cell_row_idx
-                            ## is the index along the horizontal dimension and cell_col_idx is along the vertical dimension.
-                            yolo_cell_index =  cell_row_idx * num_cells_image_width  +  cell_col_idx
-                            if yolo_debug:
-                                print("iter=%d  yolo_vector: " % iter, yolo_vector)
-                                print("iter=%d  yolo_cell_index: " % iter, yolo_cell_index)
-                            yolo_tensor[ibx, yolo_cell_index, anchbox.adx] = torch.FloatTensor( yolo_vector )
+                        ## You have to be CAREFUL about object center calculation since bounding-box coordinates
+                        ## are in (x,y) format --- with x-positive going to the right and y-positive going down.
+                        obj_center_x =  (bbox_tensor[0,idx][2].float() +  bbox_tensor[0,idx][0].float()) / 2.0             ## (36)
+                        obj_center_y =  (bbox_tensor[0,idx][3].float() +  bbox_tensor[0,idx][1].float()) / 2.0             ## (37)
+                        ## Now you need to switch back from (x,y) format to (i,j) format:
+                        yolocell_center_i =  cell_row_indx*yolo_interval + float(yolo_interval) / 2.0                      ## (38)
+                        yolocell_center_j =  cell_col_indx*yolo_interval + float(yolo_interval) / 2.0                      ## (39)
+                        del_x  =  (obj_center_x.float() - yolocell_center_j.float()) / yolo_interval                       ## (40)
+                        del_y  =  (obj_center_y.float() - yolocell_center_i.float()) / yolo_interval                       ## (41)
+                        class_label_of_object = bbox_label_tensor[0,idx].item()                                            ## (42)
+                        ## When batch_size is only 1, it is easy to discard an image that has no known objects in it.
+                        ## To generalize this notion to arbitrary batch sizes, you will need a batch mask to indicate
+                        ## the images in a batch that should not be considered in the rest of this code.
+                        if class_label_of_object == 13: continue                                                           ## (43)
+                        AR = obj_bb_height.float() / obj_bb_width.float()                                                  ## (44)
+                        if AR <= 0.2:               anch_box_index = 0                                                     ## (45)
+                        if 0.2 < AR <= 0.5:         anch_box_index = 1                                                     ## (46)
+                        if 0.5 < AR <= 1.5:         anch_box_index = 2                                                     ## (47)
+                        if 1.5 < AR <= 4.0:         anch_box_index = 3                                                     ## (48)
+                        if AR > 4.0:                anch_box_index = 4                                                     ## (49)
+                        yolo_vector = torch.FloatTensor([0,del_x.item(), del_y.item(), bh.item(), bw.item(), 0, 0, 0] )    ## (50)
+                        yolo_vector[0] = 1                                                                                 ## (51)
+                        yolo_vector[5 + class_label_of_object] = 1                                                         ## (52)
+                        yolo_cell_index =  cell_row_indx.item() * num_cells_image_width  +  cell_col_indx.item()           ## (53)
+                        yolo_tensor[0,yolo_cell_index, anch_box_index] = yolo_vector                                       ## (54)
+                        yolo_tensor_aug = torch.zeros(self.rpg.batch_size, num_yolo_cells, \
+                                                                   num_anchor_boxes,9).float().to(self.rpg.device)         ## (55) 
+                        yolo_tensor_aug[:,:,:,:-1] =  yolo_tensor                                                          ## (56)
+                        if yolo_debug: 
+                            print("\n\nyolo_tensor specific: ")
+                            print(yolo_tensor[0,18,2])
+                            print("\nyolo_tensor_aug_aug: ") 
+                            print(yolo_tensor_aug[0,18,2])
+                    ## If no object is present, throw all the prob mass into the extra 9th ele of yolo_vector
+                    for icx in range(num_yolo_cells):                                                                      ## (57)
+                        for iax in range(num_anchor_boxes):                                                                ## (58)
+                            if yolo_tensor_aug[0,icx,iax,0] == 0:                                                          ## (59)
+                                yolo_tensor_aug[0,icx,iax,-1] = 1                                                          ## (60)
                     if yolo_debug:
                         logger = logging.getLogger()
                         old_level = logger.level
@@ -2145,54 +2184,84 @@ class RegionProposalGenerator(object):
                         plt.imshow(np.transpose(torchvision.utils.make_grid(im_tensor, normalize=True,
                                                                          padding=3, pad_value=255).cpu(), (1,2,0)))
                         plt.show()
-                    yolo_tensor_flattened = yolo_tensor.view(im_tensor.shape[0], -1)
-                    optimizer.zero_grad()
-                    output = net(im_tensor)
-                    loss = criterion2(output, yolo_tensor_flattened)
-                    loss.backward()
-                    optimizer.step()
-                    running_loss += loss.item()
-                    if iter%500==499:    
+
+                    optimizer.zero_grad()                                                                                  ## (61)
+                    output = net(im_tensor)                                                                                ## (62)
+                    predictions_aug = output.view(self.rpg.batch_size,num_yolo_cells,num_anchor_boxes,9)                   ## (63)
+                    loss = torch.tensor(0.0, requires_grad=True).float().to(self.rpg.device)                               ## (64)
+                    for icx in range(num_yolo_cells):                                                                      ## (65)
+                        for iax in range(num_anchor_boxes):                                                                ## (66)
+                            pred_yolo_vector = predictions_aug[0,icx,iax]                                                  ## (67)
+                            target_yolo_vector = yolo_tensor_aug[0,icx,iax]                                                ## (68)
+                            ##  Estiming presence/absence of object and the Binary Cross Entropy section:
+                            object_presence = nn.Sigmoid()(torch.unsqueeze(pred_yolo_vector[0], dim=0))                    ## (69)
+                            target_for_prediction = torch.unsqueeze(target_yolo_vector[0], dim=0)                          ## (70)
+                            bceloss = criterion1(object_presence, target_for_prediction)                                   ## (71)
+                            loss += bceloss                                                                                ## (72)
+                            ## MSE section for regression params:
+                            pred_regression_vec = pred_yolo_vector[1:5]                                                    ## (73)
+                            pred_regression_vec = torch.unsqueeze(pred_regression_vec, dim=0)                              ## (74)
+                            target_regression_vec = torch.unsqueeze(target_yolo_vector[1:5], dim=0)                        ## (75)
+                            regression_loss = criterion2(pred_regression_vec, target_regression_vec)                       ## (76)
+                            loss += regression_loss                                                                        ## (77)
+                            ##  CrossEntropy section for object class label:
+                            probs_vector = pred_yolo_vector[5:]                                                            ## (78)
+                            probs_vector = torch.unsqueeze( probs_vector, dim=0 )                                          ## (79)
+                            target = torch.argmax(target_yolo_vector[5:])                                                  ## (80)
+                            target = torch.unsqueeze( target, dim=0 )                                                      ## (81)
+                            class_labeling_loss = criterion3(probs_vector, target)                                         ## (82)
+                            loss += class_labeling_loss                                                                    ## (83)
+                    if yolo_debug:
+                        print("\n\nshape of loss: ", loss.shape)
+                        print("\n\nloss: ", loss)
+                    loss.backward()                                                                                        ## (84)
+                    optimizer.step()                                                                                       ## (85)
+                    running_loss += loss.item()                                                                            ## (86)
+                    if iter%1000==999:                                                                                     ## (87)
                         if display_images:
-                            print("\n\n\n")
+                            print("\n\n\n")                ## for vertical spacing for the image to be displayed later
                         current_time = time.perf_counter()
                         elapsed_time = current_time - start_time 
-                        avg_loss = running_loss / float(100)
-                        print("[epoch:%d/%d, iter=%4d  elapsed_time=%5d secs]      mean MSE loss: %7.4f" % 
-                                                                  (epoch+1,self.rpg.epochs, iter+1, elapsed_time, avg_loss))
+                        avg_loss = running_loss / float(1000)                                                              ## (88)
+                        print("\n[epoch:%d/%d, iter=%4d  elapsed_time=%5d secs]      mean value for loss: %7.4f" % 
+                                                            (epoch+1,self.rpg.epochs, iter+1, elapsed_time, avg_loss))     ## (89)
                         Loss_tally.append(running_loss)
                         FILE1.write("%.3f\n" % avg_loss)
                         FILE1.flush()
-                        running_loss = 0.0
-                        if display_images:
-                            predictions = output.view(4,36,5,8)
-                            for ibx in range(predictions.shape[0]):                             # for each batch image
-                                icx_2_best_anchor_box = {ic : None for ic in range(36)}
-                                for icx in range(predictions.shape[1]):                         # for each yolo cell
-                                    cell_predi = predictions[ibx,icx]               
-                                    prev_best = 0
-                                    for anchor_bdx in range(cell_predi.shape[0]):
-                                        if cell_predi[anchor_bdx][0] > cell_predi[prev_best][0]:
-                                            prev_best = anchor_bdx
-                                    best_anchor_box_icx = prev_best   
-                                    icx_2_best_anchor_box[icx] = best_anchor_box_icx
-                                sorted_icx_to_box = sorted(icx_2_best_anchor_box, 
-                                           key=lambda x: predictions[ibx,x,icx_2_best_anchor_box[x]][0].item(), reverse=True)
-                                retained_cells = sorted_icx_to_box[:5]
-                                objects_detected = []
-                                for icx in retained_cells:
-                                    pred_vec = predictions[ibx,icx, icx_2_best_anchor_box[icx]]
-                                    class_labels_predi  = pred_vec[-3:]                        
-                                    if torch.all(class_labels_predi < 0.2): 
-                                        predicted_class_label = None
-                                    else:
-                                        best_predicted_class_index = (class_labels_predi == 
-                                                                          class_labels_predi.max()).nonzero().squeeze().item()
-                                        predicted_class_label = self.rpg.class_labels[best_predicted_class_index]
-                                        objects_detected.append(predicted_class_label)
-#                                    print("[batch image=%d] most probable object instance detected: ", objects_detected[-1])
-#                                    if yolo_debug:
-                                print("[batch image=%d]  objects found in descending probability order: " % ibx, objects_detected)
+                        running_loss = 0.0                                                                                 ## (90)
+                        if display_labels:
+                            predictions = output.view(self.rpg.batch_size,num_yolo_cells,num_anchor_boxes,9)               ## (91)
+                            if yolo_debug:
+                                print("\n\nyolo_vector for first image in batch, cell indexed 18, and AB indexed 2: ")
+                                print(predictions[0, 18, 2])
+                            for ibx in range(predictions.shape[0]):                             # for each batch image     ## (92)
+                                icx_2_best_anchor_box = {ic : None for ic in range(36)}                                    ## (93)
+                                for icx in range(predictions.shape[1]):                         # for each yolo cell       ## (94)
+                                    cell_predi = predictions[ibx,icx]                                                      ## (95)
+                                    prev_best = 0                                                                          ## (96)
+                                    for anchor_bdx in range(cell_predi.shape[0]):                                          ## (97)
+                                        if cell_predi[anchor_bdx][0] > cell_predi[prev_best][0]:                           ## (98)
+                                            prev_best = anchor_bdx                                                         ## (99)
+                                    best_anchor_box_icx = prev_best                                                        ## (100)
+                                    icx_2_best_anchor_box[icx] = best_anchor_box_icx                                       ## (101)
+                                sorted_icx_to_box = sorted(icx_2_best_anchor_box,                                   
+                                      key=lambda x: predictions[ibx,x,icx_2_best_anchor_box[x]][0].item(), reverse=True)   ## (102)
+                                retained_cells = sorted_icx_to_box[:5]                                                     ## (103)
+                                objects_detected = []                                                                      ## (104)
+                                for icx in retained_cells:                                                                 ## (105)
+                                    pred_vec = predictions[ibx,icx, icx_2_best_anchor_box[icx]]                            ## (106)
+                                    class_labels_predi  = pred_vec[-4:]                                                    ## (107)
+                                    class_labels_probs = torch.nn.Softmax(dim=0)(class_labels_predi)                       ## (108)
+                                    class_labels_probs = class_labels_probs[:-1]                                           ## (109)
+                                    if torch.all(class_labels_probs < 0.25):                                               ## (110)
+                                        predicted_class_label = None                                                       ## (111)
+                                    else:                                                                                
+                                        best_predicted_class_index = (class_labels_probs == class_labels_probs.max())      ## (112)
+                                        best_predicted_class_index =torch.nonzero(best_predicted_class_index,as_tuple=True)## (113)
+                                        predicted_class_label =self.rpg.class_labels[best_predicted_class_index[0].item()] ## (114)
+                                        objects_detected.append(predicted_class_label)                                     ## (115)
+                                print("[batch image=%d]  objects found in descending probability order: " % ibx, 
+                                                                                                     objects_detected)     ## (116)
                         if display_images:
                             logger = logging.getLogger()
                             old_level = logger.level
@@ -2202,7 +2271,6 @@ class RegionProposalGenerator(object):
                                                                              padding=3, pad_value=255).cpu(), (1,2,0)))
                             plt.show()
                             logger.setLevel(old_level)
-    
             print("\nFinished Training\n")
             plt.figure(figsize=(10,5))
             plt.title("Loss vs. Iterations")
@@ -2223,7 +2291,7 @@ class RegionProposalGenerator(object):
             torch.save(model.state_dict(), self.rpg.path_saved_yolo_model)
 
 
-        def run_code_for_testing_multi_instance_detection(self, net, display_images=False):        
+        def run_code_for_testing_multi_instance_detection(self, net, display_labels=False, display_images=False):        
             net.load_state_dict(torch.load(self.rpg.path_saved_yolo_model))
             net = net.to(self.rpg.device)
             yolo_interval = self.rpg.yolo_interval
@@ -2242,15 +2310,13 @@ class RegionProposalGenerator(object):
                         yolo_tensor = yolo_tensor.to(self.rpg.device)
 
                         output = net(im_tensor)
-                        
-                        predictions = output.view(4,36,5,8)
-
+                        predictions = output.view(self.rpg.batch_size,num_yolo_cells,num_anchor_boxes,9)
                         for ibx in range(predictions.shape[0]):                             # for each batch image
                             icx_2_best_anchor_box = {ic : None for ic in range(36)}
                             for icx in range(predictions.shape[1]):                         # for each yolo cell
                                 cell_predi = predictions[ibx,icx]               
                                 prev_best = 0
-                                for anchor_bdx in range(cell_predi.shape[0]):
+                                for anchor_bdx in range(cell_predi.shape[0]):               # for each anchor box
                                     if cell_predi[anchor_bdx][0] > cell_predi[prev_best][0]:
                                         prev_best = anchor_bdx
                                 best_anchor_box_icx = prev_best   
@@ -2258,18 +2324,22 @@ class RegionProposalGenerator(object):
                             sorted_icx_to_box = sorted(icx_2_best_anchor_box, 
                                        key=lambda x: predictions[ibx,x,icx_2_best_anchor_box[x]][0].item(), reverse=True)
                             retained_cells = sorted_icx_to_box[:5]
-                            objects_detected = []
-                            for icx in retained_cells:
-                                pred_vec = predictions[ibx,icx, icx_2_best_anchor_box[icx]]
-                                class_labels_predi  = pred_vec[-3:]                        
-                                if torch.all(class_labels_predi < 0.05): 
-                                    predicted_class_label = None
-                                else:
-                                    best_predicted_class_index = (class_labels_predi == 
-                                                                      class_labels_predi.max()).nonzero().squeeze().item()
-                                    predicted_class_label = self.rpg.class_labels[best_predicted_class_index]
-                                    objects_detected.append(predicted_class_label)
-                            print("[batch image=%d]  objects found in descending probability order: " % ibx, objects_detected)
+                        objects_detected = []
+                        for icx in retained_cells:
+                            pred_vec = predictions[ibx,icx, icx_2_best_anchor_box[icx]]
+                            class_labels_predi  = pred_vec[-4:]                        
+                            class_labels_probs = torch.nn.Softmax(dim=0)(class_labels_predi)
+                            class_labels_probs = class_labels_probs[:-1]
+                            if torch.all(class_labels_probs < 0.2): 
+                                predicted_class_label = None
+                            else:
+                                best_predicted_class_index = (class_labels_probs == class_labels_probs.max())
+                                best_predicted_class_index = torch.nonzero(best_predicted_class_index, as_tuple=True)
+                                predicted_class_label = self.rpg.class_labels[best_predicted_class_index[0].item()]
+                                objects_detected.append(predicted_class_label)
+
+                        print("[batch image=%d]  objects found in descending probability order: " % ibx, objects_detected)
+
                         logger = logging.getLogger()
                         old_level = logger.level
                         logger.setLevel(100)
