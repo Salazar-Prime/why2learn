@@ -10,26 +10,54 @@ consists of randomly generated shapes and 20% noise.
 """
 
 from distutils.log import debug
-import random
-import numpy
+import random, time
+import numpy as np
 import torch
 import os, sys
+
 from pycocotools.coco import COCO
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision                  
-import torchvision.transforms as tvt
 import torch.optim as optim
+import torchvision.transforms as tvt
+import torchvision.transforms.functional as F
+import torchvision.utils as tutils
 
-seed = 0           
-random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed(seed)
-numpy.random.seed(seed)
-torch.backends.cudnn.deterministic=True
-torch.backends.cudnn.benchmarks=False
-os.environ['PYTHONHASHSEED'] = str(seed)
+
+from PIL import Image
+from PIL import ImageDraw
+from PIL import ImageTk
+from PIL import ImageFont
+
+import sys,os,os.path,glob,signal
+import re
+import functools
+import math
+import random
+import copy
+import gzip
+import pickle
+
+if sys.version_info[0] == 3:
+    import tkinter as Tkinter
+    from tkinter.constants import *
+else:
+    import Tkinter    
+    from Tkconstants import *
+
+import matplotlib.pyplot as plt
+import logging        
+
+# seed = 0           
+# random.seed(seed)
+# torch.manual_seed(seed)
+# torch.cuda.manual_seed(seed)
+# numpy.random.seed(seed)
+# torch.backends.cudnn.deterministic=True
+# torch.backends.cudnn.benchmarks=False
+# os.environ['PYTHONHASHSEED'] = str(seed)
 
 # USER imports
 sys.path.append("/home/varun/work/courses/why2learn/hw/RPG-2.0.6")
@@ -45,11 +73,11 @@ rpg = RegionProposalGenerator(
                   dataroot_test  = "/home/varun/work/courses/why2learn/hw/hw6/data/",
                   image_size = [120,120],
                   yolo_interval = 20,
-                  path_saved_yolo_model = "/home/varun/work/courses/why2learn/saved_yolo_model_lr-4.pt",
-                  momentum = 0.9,
+                  path_saved_yolo_model = "/home/varun/work/courses/why2learn/saved_yolo_model_lr-4_bs_71_depth16.pt",
+                  momentum = 0.5,
                   learning_rate = 1e-4,
-                  epochs = 20,
-                  batch_size = 1,
+                  epochs = 50,
+                  batch_size = 71,
                   classes = ['car','motorcycle','stop sign'],
                   use_gpu = True,
               )
@@ -57,9 +85,20 @@ rpg = RegionProposalGenerator(
 class batchedYOLO(RegionProposalGenerator.YoloLikeDetector):
     def __init__(self, rpg):
         super().__init__(rpg)
+    
+    def save_yolo_model(self, acc_max, acc, model, path): 
+        if acc_max != 0:
+            oldSaveName = "model_" + str(self.rpg.epochs) + "_" +  str(self.rpg.learning_rate) + "_" + str(self.rpg.batch_size) + "_" + str(model.depth) +"_" + str(np.round(acc_max,2)) + "_best.pt"   
+            oldSaveName = os.path.join(path,oldSaveName) 
+            os.remove(oldSaveName)                        
+        saveName = "model_" + str(self.rpg.epochs) + "_" +  str(self.rpg.learning_rate) + "_" + str(self.rpg.batch_size) + "_" + str(model.depth) +"_" + str(np.round(acc,2)) + "_best.pt"   
+        saveName = os.path.join(path,saveName)                         
+        torch.save(model, saveName) 
+
     def run_code_for_training_multi_instance_detection(self, net, display_labels=False, display_images=False):
         yolo_debug = False
-        filename_for_out1 = "performance_numbers_" + str(self.rpg.epochs) + "label.txt"                                 
+        filename_for_out1 = "performance_numbers_" + str(self.rpg.epochs) + "_" +  str(self.rpg.learning_rate) + "_" + str(self.rpg.batch_size) + "_" + str(model.depth) + "_"+"label.txt"                                 
+        filename_for_out1 = os.path.join("/home/varun/work/courses/why2learn/hw/hw6/runs",filename_for_out1)
         FILE1 = open(filename_for_out1, 'w')                                                                               
         net = net.to(self.rpg.device)                                                                                  
         criterion1 = nn.BCELoss()                    # For the first element of the 8 element yolo vector              ## (3)
@@ -79,14 +118,16 @@ class batchedYOLO(RegionProposalGenerator.YoloLikeDetector):
         ## are: [obj_present, bx, by, bh, bw, c1, c2, c3] where bx and by are the delta diffs between the centers
         ## of the yolo cell and the center of the object bounding box in terms of a unit for the cell width and cell 
         ## height.  bh and bw are the height and the width of object bounding box in terms of the cell height and width.
+        acc_max = 0
         for epoch in range(self.rpg.epochs):                                                                           ## (11)
-            print("")
+            # print("Epoch %d"%(epoch))
             running_loss = 0.0                                                                                         ## (12)
             for iter, data in enumerate(self.train_dataloader):   
                 if yolo_debug:
                     print("\n\n\n======================================= iteration: %d ========================================\n" % iter)
                 yolo_tensor = torch.zeros( self.rpg.batch_size, num_yolo_cells, num_anchor_boxes, 8 )                  ## (13)
                 im_tensor, seg_mask_tensor, bbox_tensor, bbox_label_tensor, num_objects_in_image = data                ## (14)
+                # local_batch_size = 
                 im_tensor   = im_tensor.to(self.rpg.device)                                                            ## (15)
                 seg_mask_tensor = seg_mask_tensor.to(self.rpg.device)                 
                 bbox_tensor = bbox_tensor.to(self.rpg.device)
@@ -129,7 +170,9 @@ class batchedYOLO(RegionProposalGenerator.YoloLikeDetector):
                     width_center_bb =  (bbox_tensor[:,idx,0] + bbox_tensor[:,idx,2]) // 2                              ## (26)
                     obj_bb_height = bbox_tensor[:,idx,3] -  bbox_tensor[:,idx,1]                                       ## (27)
                     obj_bb_width = bbox_tensor[:,idx,2] - bbox_tensor[:,idx,0]                                         ## (28)
-                    if (obj_bb_height < 4.0) or (obj_bb_width < 4.0): continue                                         ## (29)
+                    yolo_tensor_aug = torch.zeros(self.rpg.batch_size, num_yolo_cells, \
+                                                                num_anchor_boxes,9).float().to(self.rpg.device)         ## (55) 
+                    if (torch.any(obj_bb_height < 4.0)) or (torch.any(obj_bb_width < 4.0)): continue                                         ## (29)
 
                     cell_row_indx =  (height_center_bb / yolo_interval).int()          ## for the i coordinate         ## (30)
                     cell_col_indx =  (width_center_bb / yolo_interval).int()           ## for the j coordinates        ## (31)
@@ -144,48 +187,53 @@ class batchedYOLO(RegionProposalGenerator.YoloLikeDetector):
 
                     ## You have to be CAREFUL about object center calculation since bounding-box coordinates
                     ## are in (x,y) format --- with x-positive going to the right and y-positive going down.
-                    obj_center_x =  (bbox_tensor[:,idx][2].float() +  bbox_tensor[:,idx][0].float()) / 2.0             ## (36)
-                    obj_center_y =  (bbox_tensor[:,idx][3].float() +  bbox_tensor[:,idx][1].float()) / 2.0             ## (37)
+                    obj_center_x =  (bbox_tensor[:,idx,2].float() +  bbox_tensor[:,idx,0].float()) / 2.0             ## (36)
+                    obj_center_y =  (bbox_tensor[:,idx,3].float() +  bbox_tensor[:,idx,1].float()) / 2.0             ## (37)
                     ## Now you need to switch back from (x,y) format to (i,j) format:
                     yolocell_center_i =  cell_row_indx*yolo_interval + float(yolo_interval) / 2.0                      ## (38)
                     yolocell_center_j =  cell_col_indx*yolo_interval + float(yolo_interval) / 2.0                      ## (39)
                     del_x  =  (obj_center_x.float() - yolocell_center_j.float()) / yolo_interval                       ## (40)
                     del_y  =  (obj_center_y.float() - yolocell_center_i.float()) / yolo_interval                       ## (41)
-                    class_label_of_object = bbox_label_tensor[:,idx].tolist()                                            ## (42)
+                    class_label_of_object = np.array(bbox_label_tensor[:,idx].tolist())                                            ## (42))
                     ## When batch_size is only 1, it is easy to discard an image that has no known objects in it.
                     ## To generalize this notion to arbitrary batch sizes, you will need a batch mask to indicate
                     ## the images in a batch that should not be considered in the rest of this code.
 
                     ## update the batch_mask - set to zero is class is 13 i.e. no object present
-                    batch_mask = batch_mask.masked_fill_(torch.BoolTensor([1 if i==13 else 0 for i in cls]).to(self.rpg.device),0)
-                    batch_mask = batch_mask.tolist()
+                    batch_mask = batch_mask.masked_fill_(torch.BoolTensor([1 if i==13 else 0 for i in class_label_of_object]).to(self.rpg.device),0)
+                    batch_mask_index = np.where(np.array(batch_mask.tolist())==1)[0]
                     # if class_label_of_object == 13: continue  
-                    for i in batch_mask:
-                        if i != 0:
-                            sAR = obj_bb_height.float() / obj_bb_width.float()                                                  ## (44)
-                            if AR <= 0.2:               anch_box_index = 0                                                     ## (45)
-                            if 0.2 < AR <= 0.5:         anch_box_index = 1                                                     ## (46)
-                            if 0.5 < AR <= 1.5:         anch_box_index = 2                                                     ## (47)
-                            if 1.5 < AR <= 4.0:         anch_box_index = 3                                                     ## (48)
-                            if AR > 4.0:                anch_box_index = 4                                                     ## (49)
-                            yolo_vector = torch.FloatTensor([0,del_x.item(), del_y.item(), bh.item(), bw.item(), 0, 0, 0] )    ## (50)
-                            yolo_vector[0] = 1                                                                                 ## (51)
-                            yolo_vector[5 + class_label_of_object] = 1                                                         ## (52)
-                            yolo_cell_index =  cell_row_indx.tolist() * num_cells_image_width  +  cell_col_indx.tolist()           ## (53)
-                            yolo_tensor[0,yolo_cell_index, anch_box_index] = yolo_vector                                       ## (54)
-                            yolo_tensor_aug = torch.zeros(self.rpg.batch_size, num_yolo_cells, \
-                                                                        num_anchor_boxes,9).float().to(self.rpg.device)         ## (55) 
-                            yolo_tensor_aug[:,:,:,:-1] =  yolo_tensor                                                          ## (56)
-                            if yolo_debug: 
-                                print("\n\nyolo_tensor specific: ")
-                                print(yolo_tensor[0,18,2])
-                                print("\nyolo_tensor_aug_aug: ") 
-                                print(yolo_tensor_aug[0,18,2])
+                    yolo_vector = torch.zeros((self.rpg.batch_size,8), dtype=torch.float32)
+                    anch_box_index = np.zeros(self.rpg.batch_size)
+                    for ibx in range(len(batch_mask.tolist())):
+                        if ibx in batch_mask_index:
+                            AR = obj_bb_height[ibx].float() / obj_bb_width[ibx].float()                                                  ## (44)
+                            if AR <= 0.2:               anch_box_index[ibx] = 0                                                     ## (45)
+                            if 0.2 < AR <= 0.5:         anch_box_index[ibx] = 1                                                     ## (46)
+                            if 0.5 < AR <= 1.5:         anch_box_index[ibx] = 2                                                     ## (47)
+                            if 1.5 < AR <= 4.0:         anch_box_index[ibx] = 3                                                     ## (48)
+                            if AR > 4.0:                anch_box_index[ibx] = 4                                                     ## (49)
+                    # yolo_vector = torch.FloatTensor([0,del_x.item(), del_y.item(), bh.item(), bw.item(), 0, 0, 0] )    ## (50)
+                    # yolo_vector[batch_mask_index,0] = torch.FloatTensor([self.rpg.batch_size, 0,del_x.item(), del_y.item(), bh.item(), bw.item(), 0, 0, 0] )
+                    yolo_vector[batch_mask_index,0] = 1          
+                    yolo_vector[batch_mask_index,1:5] = torch.transpose(torch.FloatTensor([del_x.tolist(), del_y.tolist(), bh.tolist(), bw.tolist()]),0,1)                                                                     ## (51)
+                    yolo_vector[batch_mask_index,5 + class_label_of_object] = 1                                                         ## (52)
+                    yolo_cell_index =  cell_row_indx * num_cells_image_width  +  cell_col_indx          ## (53)
+                    yolo_tensor[batch_mask_index,yolo_cell_index.tolist(), anch_box_index] = yolo_vector.to(self.rpg.device)                                        ## (54)
+                    yolo_tensor_aug = torch.zeros(self.rpg.batch_size, num_yolo_cells, \
+                                                                num_anchor_boxes,9).float().to(self.rpg.device)         ## (55) 
+                    yolo_tensor_aug[batch_mask_index,:,:,:-1] =  yolo_tensor                                                          ## (56)
+                    if yolo_debug: 
+                        print("\n\nyolo_tensor specific: ")
+                        print(yolo_tensor[0,18,2])
+                        print("\nyolo_tensor_aug_aug: ") 
+                        print(yolo_tensor_aug[0,18,2])
                 ## If no object is present, throw all the prob mass into the extra 9th ele of yolo_vector
-                for icx in range(num_yolo_cells):                                                                      ## (57)
-                    for iax in range(num_anchor_boxes):                                                                ## (58)
-                        if yolo_tensor_aug[0,icx,iax,0] == 0:                                                          ## (59)
-                            yolo_tensor_aug[0,icx,iax,-1] = 1                                                          ## (60)
+                for ibx in range(self.rpg.batch_size):
+                    for icx in range(num_yolo_cells):                                                                      ## (57)
+                        for iax in range(num_anchor_boxes):                                                                ## (58)
+                            if yolo_tensor_aug[ibx,icx,iax,0] == 0:                                                          ## (59)
+                                yolo_tensor_aug[ibx,icx,iax,-1] = 1                                                          ## (60)
                 if yolo_debug:
                     logger = logging.getLogger()
                     old_level = logger.level
@@ -201,23 +249,23 @@ class batchedYOLO(RegionProposalGenerator.YoloLikeDetector):
                 loss = torch.tensor(0.0, requires_grad=True).float().to(self.rpg.device)                               ## (64)
                 for icx in range(num_yolo_cells):                                                                      ## (65)
                     for iax in range(num_anchor_boxes):                                                                ## (66)
-                        pred_yolo_vector = predictions_aug[0,icx,iax]                                                  ## (67)
-                        target_yolo_vector = yolo_tensor_aug[0,icx,iax]                                                ## (68)
+                        pred_yolo_vector = predictions_aug[:,icx,iax]                                                  ## (67)
+                        target_yolo_vector = yolo_tensor_aug[:,icx,iax]                                                ## (68)
                         ##  Estiming presence/absence of object and the Binary Cross Entropy section:
-                        object_presence = nn.Sigmoid()(torch.unsqueeze(pred_yolo_vector[0], dim=0))                    ## (69)
-                        target_for_prediction = torch.unsqueeze(target_yolo_vector[0], dim=0)                          ## (70)
+                        object_presence = nn.Sigmoid()(torch.unsqueeze(pred_yolo_vector[:,0], dim=0))                    ## (69)
+                        target_for_prediction = torch.unsqueeze(target_yolo_vector[:,0], dim=0)                          ## (70)
                         bceloss = criterion1(object_presence, target_for_prediction)                                   ## (71)
                         loss += bceloss                                                                                ## (72)
                         ## MSE section for regression params:
-                        pred_regression_vec = pred_yolo_vector[1:5]                                                    ## (73)
+                        pred_regression_vec = pred_yolo_vector[:,1:5]                                                    ## (73)
                         pred_regression_vec = torch.unsqueeze(pred_regression_vec, dim=0)                              ## (74)
-                        target_regression_vec = torch.unsqueeze(target_yolo_vector[1:5], dim=0)                        ## (75)
+                        target_regression_vec = torch.unsqueeze(target_yolo_vector[:,1:5], dim=0)                        ## (75)
                         regression_loss = criterion2(pred_regression_vec, target_regression_vec)                       ## (76)
                         loss += regression_loss                                                                        ## (77)
                         ##  CrossEntropy section for object class label:
-                        probs_vector = pred_yolo_vector[5:]                                                            ## (78)
+                        probs_vector = pred_yolo_vector[:,5:]                                                            ## (78)
                         probs_vector = torch.unsqueeze( probs_vector, dim=0 )                                          ## (79)
-                        target = torch.argmax(target_yolo_vector[5:])                                                  ## (80)
+                        target = torch.argmax(target_yolo_vector[:,5:], dim=0)                                                  ## (80)
                         target = torch.unsqueeze( target, dim=0 )                                                      ## (81)
                         class_labeling_loss = criterion3(probs_vector, target)                                         ## (82)
                         loss += class_labeling_loss                                                                    ## (83)
@@ -227,19 +275,21 @@ class batchedYOLO(RegionProposalGenerator.YoloLikeDetector):
                 loss.backward()                                                                                        ## (84)
                 optimizer.step()                                                                                       ## (85)
                 running_loss += loss.item()                                                                            ## (86)
-                if iter%1000==999:                                                                                     ## (87)
+                if iter%15==14:                                                                                     ## (87)
                     if display_images:
                         print("\n\n\n")                ## for vertical spacing for the image to be displayed later
                     current_time = time.perf_counter()
                     elapsed_time = current_time - start_time 
                     avg_loss = running_loss / float(1000)                                                              ## (88)
-                    print("\n[epoch:%d/%d, iter=%4d  elapsed_time=%5d secs]      mean value for loss: %7.4f" % 
-                                                        (epoch+1,self.rpg.epochs, iter+1, elapsed_time, avg_loss))     ## (89)
+                    # print("\n[epoch:%d/%d, iter=%4d  elapsed_time=%5d secs]      mean value for loss: %7.4f" % 
+                                                        # (epoch+1,self.rpg.epochs, iter+1, elapsed_time, avg_loss))     ## (89)
                     Loss_tally.append(running_loss)
                     FILE1.write("%.3f\n" % avg_loss)
                     FILE1.flush()
                     running_loss = 0.0                                                                                 ## (90)
                     if display_labels:
+                        correct = 0
+                        total_objects = 0
                         predictions = output.view(self.rpg.batch_size,num_yolo_cells,num_anchor_boxes,9)               ## (91)
                         if yolo_debug:
                             print("\n\nyolo_vector for first image in batch, cell indexed 18, and AB indexed 2: ")
@@ -257,21 +307,37 @@ class batchedYOLO(RegionProposalGenerator.YoloLikeDetector):
                             sorted_icx_to_box = sorted(icx_2_best_anchor_box,                                   
                                     key=lambda x: predictions[ibx,x,icx_2_best_anchor_box[x]][0].item(), reverse=True)   ## (102)
                             retained_cells = sorted_icx_to_box[:5]                                                     ## (103)
-                            objects_detected = []                                                                      ## (104)
+                            objects_detected = []    
+                            pt = []                                                                  ## (104)
                             for icx in retained_cells:                                                                 ## (105)
                                 pred_vec = predictions[ibx,icx, icx_2_best_anchor_box[icx]]                            ## (106)
                                 class_labels_predi  = pred_vec[-4:]                                                    ## (107)
                                 class_labels_probs = torch.nn.Softmax(dim=0)(class_labels_predi)                       ## (108)
                                 class_labels_probs = class_labels_probs[:-1]                                           ## (109)
                                 if torch.all(class_labels_probs < 0.25):                                               ## (110)
-                                    predicted_class_label = None                                                       ## (111)
+                                    predicted_class_label = None       
+                                    pt.append(13)                                                ## (111)
                                 else:                                                                                
                                     best_predicted_class_index = (class_labels_probs == class_labels_probs.max())      ## (112)
                                     best_predicted_class_index =torch.nonzero(best_predicted_class_index,as_tuple=True)## (113)
                                     predicted_class_label =self.rpg.class_labels[best_predicted_class_index[0].item()] ## (114)
+                                    pt.append(best_predicted_class_index[0].item())
                                     objects_detected.append(predicted_class_label)                                     ## (115)
                             print("[batch image=%d]  objects found in descending probability order: " % ibx, 
                                                                                                     objects_detected)     ## (116)
+                            gt = np.array(bbox_label_tensor[ibx,:].tolist())
+                            # pt = np.array(objects_detected)
+                            correct += np.sum(gt==pt)
+                            total_objects += np.sum(gt != None)
+                            acc = 100.0*correct/total_objects
+                        print("\n[epoch:%d/%d, iter=%4d  elapsed_time=%5d secs]      mean value for loss: %7.4f     Accuracy: %0.2f" % 
+                                    (epoch+1,self.rpg.epochs, iter+1, elapsed_time, avg_loss, acc))     
+                        if acc_max < acc:
+                            self.save_yolo_model(acc_max, acc, net, "/home/varun/work/courses/why2learn/hw/hw6/runs")
+                            acc_max = acc
+
+                            
+                        # print("Epoch %d Accuracy")
                     if display_images:
                         logger = logging.getLogger()
                         old_level = logger.level
@@ -292,7 +358,7 @@ class batchedYOLO(RegionProposalGenerator.YoloLikeDetector):
         plt.show()
         torch.save(net.state_dict(), self.rpg.path_saved_yolo_model)
         return net
-
+    
 ## set the dataloaders
 # yolo.set_dataloaders(train=True)
 # yolo.set_dataloaders(test=True)
@@ -301,9 +367,10 @@ yolo = batchedYOLO( rpg = rpg )
 ## custom dataloader
 # prepare train dataloader
 transform = tvt.Compose([tvt.ToTensor(),tvt.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])  
-coco  = COCO('/home/varun/work/courses/why2learn/hw/annotations/instances_train2017.json')
+# coco  = COCO('/home/varun/work/courses/why2learn/hw/annotations/instances_train2017.json')
+coco = []
 dataserver_train = CocoDetection(transform, rpg.dataroot_train, rpg.class_labels, rpg.image_size, coco, loadDict=True, saveDict=False, mode="train")
-yolo.train_dataloader = torch.utils.data.DataLoader(dataserver_train, batch_size=rpg.batch_size, shuffle=True, num_workers=16)
+yolo.train_dataloader = torch.utils.data.DataLoader(dataserver_train, batch_size=rpg.batch_size, shuffle=True, num_workers=8)
 
 model = yolo.NetForYolo(skip_connections=True, depth=8) 
 
@@ -312,12 +379,9 @@ print("\n\nThe number of learnable parameters in the model: %d" % number_of_lear
 num_layers = len(list(model.parameters()))
 print("\n\nThe number of layers in the model: %d\n\n" % num_layers)
 
-# %%
 # train, test, both
-mode = "both"
+mode = "train"
 if mode=="train" or mode=="both":
-    model = yolo.run_code_for_training_multi_instance_detection(model, display_images=False)
+    model = yolo.run_code_for_training_multi_instance_detection(model, display_images=False, display_labels=True)
 if mode=="test" or mode=="both":
     yolo.run_code_for_testing_multi_instance_detection(model, display_images = True)
-
-

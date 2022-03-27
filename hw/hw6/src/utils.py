@@ -53,7 +53,7 @@ def checkImgAnn(root_path, classes, img, catIds, anns, size, coco):
         ## normalize bbox 
         wScale, hScale = size[0]/w, size[1]/h
         bbox = anns[i]['bbox']
-        bbox = [wScale*(bbox[0])-1,hScale*(bbox[1])-1,wScale*(bbox[0]+bbox[2])-1,hScale*(bbox[1]+bbox[3])-1]
+        bbox = [wScale*(bbox[0]),hScale*(bbox[1]),wScale*(bbox[0]+bbox[2]-1),hScale*(bbox[1]+bbox[3]-1)]
         # can improve the logic here for seperate width and height
         for j,coor in enumerate(bbox):
             if coor > size[0]-1:

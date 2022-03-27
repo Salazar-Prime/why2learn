@@ -2301,7 +2301,7 @@ class RegionProposalGenerator(object):
             with torch.no_grad():
                 for iter, data in enumerate(self.test_dataloader):
                     im_tensor, seg_mask_tensor, bbox_tensor, bbox_label_tensor, num_objects_in_image = data
-                    if iter % 50 == 49:
+                    if iter % 5 == 4:
                         print("\n\n\n\nShowing output for test batch %d: " % (iter+1))
                         im_tensor   = im_tensor.to(self.rpg.device)
                         seg_mask_tensor = seg_mask_tensor.to(self.rpg.device)                 
@@ -2343,10 +2343,11 @@ class RegionProposalGenerator(object):
                         logger = logging.getLogger()
                         old_level = logger.level
                         logger.setLevel(100)
-                        plt.figure(figsize=[15,4])
-                        plt.imshow(np.transpose(torchvision.utils.make_grid(im_tensor, normalize=True,
-                                                                         padding=3, pad_value=255).cpu(), (1,2,0)))
-                        plt.show()
+                        if display_images:
+                            plt.figure(figsize=[15,4])
+                            plt.imshow(np.transpose(torchvision.utils.make_grid(im_tensor, normalize=True,
+                                                                            padding=3, pad_value=255).cpu(), (1,2,0)))
+                            plt.show()
                         logger.setLevel(old_level)
 
     
