@@ -1,9 +1,8 @@
 """
-Homework 5: Create custom skipblock and train/test
-            modified from DLStudio
+Homework 6: Implement part of YOLO logic 
 
 Author: Varun Aggarwal
-Last Modified: 07 Mar 2022
+Last Modified: 28 Mar 2022
 """
 
 import torch
