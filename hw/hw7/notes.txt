@@ -1,0 +1,2 @@
+understand transpose conv2d
+still don;t have a fucking clue !!!!

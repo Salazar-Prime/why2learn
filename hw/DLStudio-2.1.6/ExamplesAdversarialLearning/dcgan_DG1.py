@@ -16,7 +16,7 @@ IMPORTANT NOTE:
     'ExamplesAdversarialLearning' directory of the distribution.  Subsequently, execute the
     following command in that directory:
 
-            tar zxvf datasets_for_AdversarialLearning.tar.gz
+            tar -zxvf datasets_for_AdversarialLearning.tar.gz
 
     This command will create a 'dataGAN' subdirectory and deposit the following dataset archive
     in that subdirectory:
@@ -73,20 +73,19 @@ os.environ['PYTHONHASHSEED'] = str(seed)
 
 ##  watch -d -n 0.5 nvidia-smi
 
+sys.path.append("/home/varun/work/courses/why2learn/hw/DLStudio-2.1.6")
 from DLStudio import *
 from AdversarialLearning import *
 
 import sys
 
 dls = DLStudio(                                                                                       
-#                  dataroot = "/mnt/cloudNAS3/Avi/ImageDatasets/PurdueShapes5GAN/multiobj/",
-#                  dataroot = "/home/kak/ImageDatasets/PurdueShapes5GAN/multiobj/",  
                   dataroot = "./dataGAN/PurdueShapes5GAN/multiobj/", 
                   image_size = [64,64],                                                               
-                  path_saved_model = "./saved_model", 
-                  learning_rate = 2e-4,      ## <==  try smaller value if mode collapse
+                  path_saved_model = "./runs/saved_model", 
+                  learning_rate = 3e-5,      ## <==  try smaller value if mode collapse
                   epochs = 30,
-                  batch_size = 32,                                                                     
+                  batch_size = 64,                                                                     
                   use_gpu = True,                                                                     
               )           
 
@@ -114,7 +113,7 @@ print("\nThe number of layers in the generator: %d\n\n" % num_layers_gen)
 
 dcgan.set_dataloader()
 
-dcgan.show_sample_images_from_dataset(dls)
+# dcgan.show_sample_images_from_dataset(dls)
 
 dcgan.run_gan_code(dls, adversarial, discriminator=discriminator, generator=generator, results_dir="results_DG1")
 

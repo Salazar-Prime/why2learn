@@ -359,10 +359,11 @@ class batchedYOLO(RegionProposalGenerator.YoloLikeDetector):
         torch.save(net.state_dict(), self.rpg.path_saved_yolo_model)
         return net
     
+yolo = batchedYOLO( rpg = rpg )
+
 ## set the dataloaders
 # yolo.set_dataloaders(train=True)
 # yolo.set_dataloaders(test=True)
-yolo = batchedYOLO( rpg = rpg )
 
 ## custom dataloader
 # prepare train dataloader
