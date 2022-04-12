@@ -313,7 +313,14 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import time
 import glob                                                                                                           
-import imageio                                                                                                        
+import imageio          
+
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+
+import tensorflow as tf
+from tensorflow import keras
+from datetime import datetime
 
 #______________________________  AdversarialLearning Class Definition  ________________________________
 
@@ -833,6 +840,22 @@ class AdversarialLearning(object):
 
             in the "ExamplesAdversarialLearning" directory of the distribution.
             """
+
+            ## memory limit
+            gpus = tf.config.experimental.list_physical_devices('GPU')
+            if gpus:
+                try:
+                    for gpu in gpus:
+                        tf.config.experimental.set_memory_growth(gpu, True)
+                        print("done with memory growth-------------------------------------------")
+                except RuntimeError as e:
+                    print(e)
+
+            # Sets up a timestamped log directory.
+            logdir = "/home/varun/work/courses/why2learn/hw/hw7/runsv4/logs/train_data/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+            # Creates a file writer for the log directory.
+            file_writer = tf.summary.create_file_writer(logdir)
+
             dir_name_for_results = results_dir
             if os.path.exists(dir_name_for_results):
                 files = glob.glob(dir_name_for_results + "/*")
@@ -937,6 +960,12 @@ class AdversarialLearning(object):
                         img_list.append(torchvision.utils.make_grid(fake, padding=1, pad_value=1, normalize=True))
                     iters += 1              
 
+
+
+                # Using the file writer, log the reshaped image.
+                with file_writer.as_default():
+                    tf.summary.image("Training data", tf.expand_dims(tvtF.to_pil_image(img_list[-1]),0), step=epoch)
+
             #  At the end of training, make plots from the data in G_losses and D_losses:
             plt.figure(figsize=(10,5))    
             plt.title("Generator and Discriminator Loss During Training")    
@@ -953,6 +982,7 @@ class AdversarialLearning(object):
                 img = tvtF.to_pil_image(imgobj)  
                 images.append(img) 
             imageio.mimsave(dir_name_for_results + "/generation_animation.gif", images, fps=5)
+
             #  Make a side-by-side comparison of a batch-size sampling of real images drawn from the
             #  training data and what the Generator is capable of producing at the end of training:
             real_batch = next(iter(self.train_dataloader)) 
@@ -981,6 +1011,22 @@ class AdversarialLearning(object):
 
                          wgan_CG1.py
             """
+
+            ## memory limit
+            gpus = tf.config.experimental.list_physical_devices('GPU')
+            if gpus:
+                try:
+                    for gpu in gpus:
+                        tf.config.experimental.set_memory_growth(gpu, True)
+                        print("done with memory growth-------------------------------------------")
+                except RuntimeError as e:
+                    print(e)
+
+            # Sets up a timestamped log directory.
+            logdir = "/home/varun/work/courses/why2learn/hw/hw7/runsv4/logs/train_data/" + datetime.now().strftime("%Y%m%d-%H%M%S")
+            # Creates a file writer for the log directory.
+            file_writer = tf.summary.create_file_writer(logdir)
+
             dir_name_for_results = results_dir
             if os.path.exists(dir_name_for_results):
                 files = glob.glob(dir_name_for_results + "/*")
@@ -1097,13 +1143,18 @@ class AdversarialLearning(object):
                         with torch.no_grad():                                                                        
                             fake = netG(fixed_noise).detach().cpu()  
                         img_list.append(torchvision.utils.make_grid(fake, padding=1, pad_value=1, normalize=True))   
-                    iters += 1                                                                                        
+                    iters += 1         
+
+                # Using the file writer, log the reshaped image.
+                with file_writer.as_default():
+                    tf.summary.image("Training data", tf.expand_dims(tvtF.to_pil_image(img_list[-1]),0), step=epoch)
+
             
             #  At the end of training, make plots from the data in Gen_losses and Cri_losses:
             plt.figure(figsize=(10,5))                                                                             
-            plt.title("Generator and Critic Loss During Training")                                          
-            plt.plot(Gen_losses,label="G")                                                                           
-            plt.plot(Cri_losses,label="C")                                                                           
+            plt.title("Generator and Critic Loss During Training")                                    
+            plt.plot(templistG,label="G")                                                                           
+            plt.plot(templistC,label="C")                                                                           
             plt.xlabel("iterations")                                                                               
             plt.ylabel("Loss")                                                                                     
             plt.legend()                                                                                           

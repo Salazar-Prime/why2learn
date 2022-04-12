@@ -1,57 +1,8 @@
-#!/usr/bin/env python
-
-##  dcgan_DG1.py
-
 """
-IMPORTANT NOTE:  
-
-    You will need to install the PurdueShapes5GAN dataset before you can execute this script.
-
-    Download the dataset archive
-
-            datasets_for_AdversarialLearning.tar.gz
-
-    through the link "Download the image dataset for AdversarialLearning" provided at the top
-    of the HTML version of the main module doc page and store it in the
-    'ExamplesAdversarialLearning' directory of the distribution.  Subsequently, execute the
-    following command in that directory:
-
-            tar -zxvf datasets_for_AdversarialLearning.tar.gz
-
-    This command will create a 'dataGAN' subdirectory and deposit the following dataset archive
-    in that subdirectory:
-
-            PurdueShapes5GAN-20000.tar.gz
-
-    Now execute the following in the "dataGAN" directory:
-
-            tar zxvf PurdueShapes5GAN-20000.tar.gz
-
-    With that, you should be able to execute the adversarial learning based scripts in the
-    'ExamplesAdversarialLearning' directory.
-
-"""
-
-
-
-"""
-ABOUT THIS SCRIPT:
-
-This script is based on the Discriminator-Generator pair DG1 in the AdversarialLearning
-class of the DLStudio module.
-
-The DG1 pair is an implementation of DCGAN as presented in the paper "Unsupervised
-Representation Learning with Deep Convolutional Generative Adversarial Networks" by
-Radford et al.  DCGAN is short for "Deep Convolutional Generative Adversarial Network".
-
-The DCGAN neural networks are based on a "4-2-1" scheme for the different layers in the
-two networks.  For both the Generator and the Discriminator, the "4-2-1" formula stands
-for a kernel size of 4x4, a stride of 2x2, and a padding of 1x1.  In the Discriminator
-where the goal is to construct an abstraction pyramid that culminates in a binary decision
-about accepting an image as real or fake, 4x4 convolutional kernels are used in each layer
-of the Discriminator.  In the Generator, on the other hand, a kernel size of 4x4 refers to
-the TransposeConvolutions in the different layers for upsampling needed for generating an
-image from a random noise vector.
+Homework 7: Create GAN network  
+Author: Varun Aggarwal
+Last Modified: 11 Apr 2022
+Modifed from DLStudioV2.1.6
 """
 
 import random
@@ -59,18 +10,19 @@ import numpy
 import torch
 import os, sys
 
-"""
-seed = 0           
-random.seed(seed)
-torch.manual_seed(seed)
-torch.cuda.manual_seed(seed)
-numpy.random.seed(seed)
-torch.backends.cudnn.deterministic=True
-torch.backends.cudnn.benchmarks=False
-os.environ['PYTHONHASHSEED'] = str(seed)
-"""
+# # """
+seed = 12134          
+# random.seed(seed)
+# torch.manual_seed(seed)
+# torch.cuda.manual_seed(seed)
+# numpy.random.seed(seed)
+# torch.backends.cudnn.deterministic=True
+# torch.backends.cudnn.benchmarks=False
+# os.environ['PYTHONHASHSEED'] = str(seed)
+# # """
 
-from models import discrimination, generation
+from modelsv2 import discrimination, generation
+from modelsv4 import discrimination, generation
 ##  watch -d -n 0.5 nvidia-smi
 
 sys.path.append("/home/varun/work/courses/why2learn/hw/DLStudio-2.1.6")
@@ -83,9 +35,9 @@ dls = DLStudio(
                   dataroot = "/home/varun/work/courses/why2learn/hw/hw7/data/train", 
                   image_size = [64,64],                                                               
                   path_saved_model = "./runs/saved_model", 
-                  learning_rate = 2e-4,      ## <==  try smaller value if mode collapse
-                  epochs = 30,
-                  batch_size = 128,                                                                     
+                  learning_rate = 5e-5,      ## <==  try smaller value if mode collapse
+                  epochs = 500,
+                  batch_size = 64,                                                                     
                   use_gpu = True,                                                                     
               )           
 
@@ -93,7 +45,8 @@ adversarial = AdversarialLearning(
                   dlstudio = dls,
                   ngpu = 1,    
                   latent_vector_size = 100,
-                  beta1 = 0.5,                           ## for the Adam optimizer
+                  beta1 = 0.5,  ## for the Adam optimizer
+                  clipping_threshold = 0.005,              # remove this wgan             
               )
 
 dcgan =   AdversarialLearning.DataModeling( dlstudio = dls, adversarial = adversarial )
@@ -116,7 +69,7 @@ print("\nThe number of layers in the generator: %d\n\n" % num_layers_gen)
 
 dcgan.set_dataloader()
 
-dcgan.show_sample_images_from_dataset(dls)
+# dcgan.show_sample_images_from_dataset(dls)
 
-dcgan.run_gan_code(dls, adversarial, discriminator=discriminator, generator=generator, results_dir="./results_DG1_face")
+dcgan.run_wgan_code(dls, adversarial, critic=discriminator, generator=generator, results_dir="/home/varun/work/courses/why2learn/hw/hw7/runsv4/results_DG1_face_v2-"+str(seed)+"-"+str(dls.learning_rate))
 
