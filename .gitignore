@@ -1,4 +1,7 @@
 # USER
+*.kv
+*.npy
+*saved_model
 *.pt
 temp
 # swap files

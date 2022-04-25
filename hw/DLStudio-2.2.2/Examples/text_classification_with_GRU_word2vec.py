@@ -33,42 +33,43 @@ from DLStudio import *
 
 #dataroot = "/home/kak/TextDatasets/sentiment_dataset/"
 # dataroot = "./data/TextDatasets/sentiment_dataset/"
-dataroot = "./data"
+dataroot = "/home/varun/work/courses/why2learn/hw/DLStudio-2.2.2/Examples/data/"
 
-dataset_archive_train = "sentiment_dataset_train_40.tar.gz"
+dataset_archive_train = "sentiment_dataset_train_200.tar.gz"
 #dataset_archive_train = "sentiment_dataset_train_200.tar.gz"
 
-dataset_archive_test =  "sentiment_dataset_test_40.tar.gz"
+dataset_archive_test =  "sentiment_dataset_test_200.tar.gz"
 #dataset_archive_test = "sentiment_dataset_test_200.tar.gz"
 
-path_to_saved_embeddings = "./runs"
+path_to_saved_embeddings = "/home/varun/work/courses/why2learn/hw/DLStudio-2.2.2/Examples/runs/"
 # path_to_saved_embeddings = "/home/kak/TextDatasets/word2vec/"
 #path_to_saved_embeddings = "./data/TextDatasets/word2vec/"
 
 
 dls = DLStudio(
                   dataroot = dataroot,
-                  path_saved_model = "./runs/saved_model",
+                  path_saved_model = "/home/varun/work/courses/why2learn/hw/DLStudio-2.2.2/Examples/runs/saved_model",
                   momentum = 0.9,
-                  learning_rate =  1e-5,
-                  epochs = 1,
+                  learning_rate =  1e-3,
+                  epochs = 5,
                   batch_size = 1,
                   classes = ('negative','positive'),
                   use_gpu = True,
               )
 
+if 
 text_cl = DLStudio.TextClassificationWithEmbeddings( dl_studio = dls )
 
 dataserver_train = DLStudio.TextClassificationWithEmbeddings.SentimentAnalysisDataset(
                                  train_or_test = 'train',
                                  dl_studio = dls,
-                                 dataset_file = os.path.join(dataroot,dataset_archive_train),
+                                 dataset_file = dataset_archive_train,
                                  path_to_saved_embeddings = path_to_saved_embeddings,
                    )
 dataserver_test = DLStudio.TextClassificationWithEmbeddings.SentimentAnalysisDataset(
                                  train_or_test = 'test',
                                  dl_studio = dls,
-                                 dataset_file = os.path.join(dataroot,dataset_archive_test),
+                                 dataset_file = dataset_archive_test,
                                  path_to_saved_embeddings = path_to_saved_embeddings,
                   )
 text_cl.dataserver_train = dataserver_train
