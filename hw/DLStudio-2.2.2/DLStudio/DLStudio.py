@@ -4954,25 +4954,25 @@ class DLStudio(object):
                 dataset = f.read()
                 if path_to_saved_embeddings is not None:
                     #### fasttext
-                    import fasttext.util
-                    import fasttext
-                    if os.path.exists(path_to_saved_embeddings + "cc.es.300.bin"): ## (a)
-                        self.word_vectors = fasttext.load_model(path_to_saved_embeddings + "cc.es.300.bin") ## (b)
-                    else:
-                        fasttext.util.download_model('es', if_exists='ignore') ## (c)
-                        self.word_vectors = fasttext.load_model(path_to_saved_embeddings + "cc.es.300.bin")
-                    ########## word2vec
-                    # import gensim.downloader as genapi
-                    # from gensim.models import KeyedVectors 
-                    # if os.path.exists(path_to_saved_embeddings + 'vectors.kv'):
-                    #     self.word_vectors = KeyedVectors.load(path_to_saved_embeddings + 'vectors.kv')
+                    # import fasttext.util
+                    # import fasttext
+                    # if os.path.exists(path_to_saved_embeddings + "cc.es.300.bin"): ## (a)
+                    #     self.word_vectors = fasttext.load_model(path_to_saved_embeddings + "cc.es.300.bin") ## (b)
                     # else:
-                    #     print("""\n\nSince this is your first time to install the word2vec embeddings, it may take"""
-                    #           """\na couple of minutes. The embeddings occupy around 3.6GB of your disk space.\n\n""")
-                    #     self.word_vectors = genapi.load("word2vec-google-news-300")               
-                    #     ##  'kv' stands for  "KeyedVectors", a special datatype used by gensim because it 
-                    #     ##  has a smaller footprint than dict
-                    #     self.word_vectors.save(path_to_saved_embeddings + 'vectors.kv')    
+                    #     fasttext.util.download_model('es', if_exists='ignore') ## (c)
+                    #     self.word_vectors = fasttext.load_model(path_to_saved_embeddings + "cc.es.300.bin")
+                    ########## word2vec
+                    import gensim.downloader as genapi
+                    from gensim.models import KeyedVectors 
+                    if os.path.exists(path_to_saved_embeddings + 'vectors.kv'):
+                        self.word_vectors = KeyedVectors.load(path_to_saved_embeddings + 'vectors.kv')
+                    else:
+                        print("""\n\nSince this is your first time to install the word2vec embeddings, it may take"""
+                              """\na couple of minutes. The embeddings occupy around 3.6GB of your disk space.\n\n""")
+                        self.word_vectors = genapi.load("word2vec-google-news-300")               
+                        ##  'kv' stands for  "KeyedVectors", a special datatype used by gensim because it 
+                        ##  has a smaller footprint than dict
+                        self.word_vectors.save(path_to_saved_embeddings + 'vectors.kv')    
                 if train_or_test == 'train':
                     if sys.version_info[0] == 3:
                         self.positive_reviews_train, self.negative_reviews_train, self.vocab = pickle.loads(dataset, encoding='latin1')

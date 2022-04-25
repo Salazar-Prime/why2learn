@@ -576,7 +576,7 @@ class DataPrediction(object):
         plt.plot(predictions_gt[90000-50:90000], color="b", label="Actual")
         plt.ylabel('Energy Consumption (MW)')
         plt.legend()
-        
+        plt.savefig("output.png")
         plt.show()
 
 

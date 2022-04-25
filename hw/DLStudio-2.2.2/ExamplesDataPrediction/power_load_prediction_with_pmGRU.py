@@ -47,14 +47,16 @@ torch.backends.cudnn.benchmarks=False
 os.environ['PYTHONHASHSEED'] = str(seed)
 """
 ##  watch -d -n 0.5 nvidia-smi
-
+sys.path.append("/home/varun/work/courses/why2learn/hw/DLStudio-2.2.2")
 from DLStudio import *
 from DataPrediction import *
 
 import sys
 
 
-dataroot  =  "./dataPred/"
+# dataroot  =  "./dataPred/"
+# dataroot = "/home/varun/work/courses/why2learn/hw/DLStudio-2.2.2/Examples/data/"
+dataroot = "/home/varun/work/courses/why2learn/hw/DLStudio-2.2.2/ExamplesDataPrediction/dataPred/"
 
 dls = DLStudio(                                                                                       
                   dataroot = dataroot,
@@ -80,7 +82,10 @@ print("\n\nmodel: ", model)
 num_learnable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print("\n\nThe number of learnable parameters in pmGRU: %d\n" % num_learnable_params)
 
-dataframes = predictor.construct_dataframes_from_datafiles()
+# dataframes = predictor.construct_dataframes_from_datafiles()
+import pickle
+dataframes = pickle.load(open('test.pkl', 'rb'))
+
 dataframes_normalized = predictor.data_normalizer( dataframes )
 predictor.construct_sequences_from_data(dataframes_normalized)
 dataloader = predictor.set_dataloader()
