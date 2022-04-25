@@ -28,8 +28,8 @@ from DLStudio import *
 from DataPrediction import *
 import modelpmGRU as pmGRU
 
-# type_GRU = "torch"
-type_GRU = "pmGRU"
+type_GRU = "torch"
+# type_GRU = "pmGRU"
 
 
 dataroot = "/home/varun/work/courses/why2learn/hw/DLStudio-2.2.2/Examples/data/"
@@ -44,19 +44,28 @@ path_to_saved_embeddings = "/home/varun/work/courses/why2learn/hw/DLStudio-2.2.2
 # path_to_saved_embeddings = "/home/kak/TextDatasets/word2vec/"
 #path_to_saved_embeddings = "./data/TextDatasets/word2vec/"
 
-
-dls = DLStudio(
-                  dataroot = dataroot,
-                  path_saved_model = "/home/varun/work/courses/why2learn/hw/hw8/runs/saved_model_pmGRU.pt",
-                #   path_saved_model = "/home/varun/work/courses/why2learn/hw/hw8/runs/saved_model_GRU.pt",
-                  momentum = 0.9,
-                  learning_rate =  1e-3,
-                  epochs = 3,
-                  batch_size = 1,
-                  classes = ('negative','positive'),
-                  use_gpu = True,
-              )
-
+if type_GRU == "torch":
+    dls = DLStudio(
+                    dataroot = dataroot,
+                    path_saved_model = "/home/varun/work/courses/why2learn/hw/hw8/runs/saved_model_GRU.pt",
+                    momentum = 0.9,
+                    learning_rate =  1e-3,
+                    epochs = 3,
+                    batch_size = 1,
+                    classes = ('negative','positive'),
+                    use_gpu = True,
+                )
+elif type_GRU=="pmGRU":
+    dls = DLStudio(
+                    dataroot = dataroot,
+                    path_saved_model = "/home/varun/work/courses/why2learn/hw/hw8/runs/saved_model_pmGRU.pt",
+                    momentum = 0.9,
+                    learning_rate =  1e-3,
+                    epochs = 3,
+                    batch_size = 1,
+                    classes = ('negative','positive'),
+                    use_gpu = True,
+                )
 
 
 text_cl = DLStudio.TextClassificationWithEmbeddings( dl_studio = dls )
