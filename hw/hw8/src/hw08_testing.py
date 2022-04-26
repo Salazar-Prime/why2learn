@@ -28,12 +28,15 @@ from DLStudio import *
 from DataPrediction import *
 import modelpmGRU as pmGRU
 
-## USER DEFINED: parameters
 type_GRU = "torch"
 # type_GRU = "pmGRU"
+
+
 dataroot = "/home/varun/work/courses/why2learn/hw/DLStudio-2.2.2/Examples/data/"
+
 dataset_archive_train = "sentiment_dataset_train_200.tar.gz"
 dataset_archive_test =  "sentiment_dataset_test_200.tar.gz"
+
 path_to_saved_embeddings = "/home/varun/work/courses/why2learn/hw/DLStudio-2.2.2/Examples/runs/"
 
 if type_GRU == "torch":
@@ -82,15 +85,10 @@ text_cl.load_SentimentAnalysisDataset(dataserver_train, dataserver_test)
 if type_GRU=="torch":
     model = text_cl.GRUnetWithEmbeddings(input_size=300, hidden_size=100, output_size=2, num_layers=2)
 elif type_GRU=="pmGRU":
-      model = pmGRU.custom_pmGRU(input_size=300, hidden_size=100, output_size=2, batch_size=dls.batch_size, num_layers=1)
+    model = pmGRU.custom_pmGRU(input_size=300, hidden_size=100, output_size=2, batch_size=dls.batch_size, num_layers=1)
 
-number_of_learnable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-num_layers = len(list(model.parameters()))
+## TESTING:
+text_cl.run_code_for_testing_text_classification_with_GRU_word2vec(model)
 
-print("\n\nThe number of layers in the model: %d" % num_layers)
-print("\nThe number of learnable parameters in the model: %d" % number_of_learnable_params)
 
-## TRAINING:
-print("\nStarting training\n")
-text_cl.run_code_for_training_for_text_classification_with_GRU_word2vec(model, display_train_loss=True)
